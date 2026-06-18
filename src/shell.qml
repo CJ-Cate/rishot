@@ -123,6 +123,69 @@ ShellRoot {
     }
     function isFreehand(t) { return t === "pen"; }
 
+    /**
+     * Global source rect of a zoom annotation (the magnified content), derived
+     * from its two-point span. x/y are the min corner, so it is orientation
+     * independent regardless of drag direction.
+     */
+    function zoomSrcRect(a) {
+        var p0 = a.points[0], p1 = a.points[1];
+        var x0 = Math.min(p0.x, p1.x), y0 = Math.min(p0.y, p1.y);
+        return { x: x0, y: y0, w: Math.abs(p1.x - p0.x), h: Math.abs(p1.y - p0.y) };
+    }
+
+    /**
+     * Global rect of the callout bubble: the whole source shown at zoom x,
+     * anchored at the stored target top-left.
+     */
+    function zoomBubbleRect(a) {
+        var s = zoomSrcRect(a);
+        var z = a.zoom || Config.zoomFactor;
+        var t = a.target || { x: s.x, y: s.y };
+        return { x: t.x, y: t.y, w: s.w * z, h: s.h * z };
+    }
+
+    /**
+     * Clamps a candidate bubble top-left so a bubbleW x bubbleH bubble stays
+     * inside globalSel (the capture region the export clips to). When the bubble
+     * is larger than the region on an axis it pins to the region's near edge,
+     * keeping its top-left visible.
+     */
+    function clampTargetToSel(tx, ty, bw, bh) {
+        if (!globalSel) return { x: tx, y: ty };
+        var maxX = globalSel.x + globalSel.w - bw;
+        var maxY = globalSel.y + globalSel.h - bh;
+        var x = maxX < globalSel.x ? globalSel.x : Math.max(globalSel.x, Math.min(tx, maxX));
+        var y = maxY < globalSel.y ? globalSel.y : Math.max(globalSel.y, Math.min(ty, maxY));
+        return { x: x, y: y };
+    }
+
+    /**
+     * Default bubble placement for a freshly drawn zoom source: centred under
+     * the source if it fits, else above, else beside (right then left), each
+     * clamped to globalSel. When the bubble fits on no side it pins to the
+     * region's top-left. Returns the bubble's global top-left.
+     */
+    function defaultZoomTarget(s, z) {
+        var bw = s.w * z, bh = s.h * z;
+        var cx = s.x + s.w / 2;
+        var gap = 16;
+        var sel = globalSel;
+        var candidates = [
+            { x: cx - bw / 2, y: s.y + s.h + gap },
+            { x: cx - bw / 2, y: s.y - gap - bh },
+            { x: s.x + s.w + gap, y: s.y + s.h / 2 - bh / 2 },
+            { x: s.x - gap - bw, y: s.y + s.h / 2 - bh / 2 }
+        ];
+        function fits(c) {
+            return c.x >= sel.x && c.y >= sel.y
+                && c.x + bw <= sel.x + sel.w && c.y + bh <= sel.y + sel.h;
+        }
+        for (var i = 0; i < candidates.length; i++)
+            if (fits(candidates[i])) return candidates[i];
+        return clampTargetToSel(candidates[0].x, candidates[0].y, bw, bh);
+    }
+
     function placeText(gx, gy) {
         if (textEditing) { commitText(); return; }
         var p = clampToSel(gx, gy);
@@ -178,6 +241,7 @@ ShellRoot {
             var d = a.size || 32;
             return { x: x0 - d / 2, y: y0 - d / 2, w: d, h: d };
         }
+        if (a.type === "zoom") return zoomBubbleRect(a);
         return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
     }
 
@@ -258,7 +322,14 @@ ShellRoot {
         capturing = false;
         if (selectedIndex !== null && moveOffset
             && (moveOffset.x !== 0 || moveOffset.y !== 0)) {
-            model.move(selectedIndex, moveOffset.x, moveOffset.y);
+            var a = model.items[selectedIndex];
+            if (a && a.type === "zoom") {
+                var b = zoomBubbleRect(a);
+                var nt = clampTargetToSel(b.x + moveOffset.x, b.y + moveOffset.y, b.w, b.h);
+                model.moveTarget(selectedIndex, nt.x - b.x, nt.y - b.y);
+            } else {
+                model.move(selectedIndex, moveOffset.x, moveOffset.y);
+            }
         }
         moveOffset = null;
         moveStart = null;
@@ -307,7 +378,11 @@ ShellRoot {
             var big = draft.type === "line" || draft.type === "arrow"
                 ? Math.hypot(dx, dy) > 4
                 : dx > 2 && dy > 2;
-            if (big) model.add(draft);
+            if (big) {
+                if (draft.type === "zoom")
+                    draft.target = defaultZoomTarget(zoomSrcRect(draft), draft.zoom || Config.zoomFactor);
+                model.add(draft);
+            }
         }
         draft = null;
         pressPoint = null;

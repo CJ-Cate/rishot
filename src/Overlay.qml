@@ -43,11 +43,29 @@ Item {
     readonly property color dimColor: Theme.dim
     readonly property color vermilion: Theme.vermilion
 
+    function zoomBubbleRect(a) {
+        var p0 = a.points[0], p1 = a.points[1];
+        var sw = Math.abs(p1.x - p0.x), sh = Math.abs(p1.y - p0.y);
+        var z = a.zoom || Config.zoomFactor;
+        var t = a.target || { x: Math.min(p0.x, p1.x), y: Math.min(p0.y, p1.y) };
+        return { x: t.x, y: t.y, w: sw * z, h: sh * z };
+    }
+
     function selectionBox() {
         if (selectedIndex === null || !model
             || selectedIndex < 0 || selectedIndex >= model.items.length) return null;
         var a = model.items[selectedIndex];
         var off = moveOffset || { x: 0, y: 0 };
+        if (a.type === "zoom") {
+            var bb = zoomBubbleRect(a);
+            var zpad = 6;
+            return {
+                x: bb.x - sx + off.x - zpad,
+                y: bb.y - sy + off.y - zpad,
+                w: bb.w + zpad * 2,
+                h: bb.h + zpad * 2
+            };
+        }
         var xs = a.points.map(function (p) { return p.x; });
         var ys = a.points.map(function (p) { return p.y; });
         var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
@@ -193,28 +211,100 @@ Item {
                 required property var modelData
                 readonly property var a: modelData
                 readonly property bool valid: a !== undefined && a !== null && a.points !== undefined && a.points.length >= 2
-                readonly property real rx: valid ? Math.min(a.points[0].x, a.points[1].x) - overlay.sx : 0
-                readonly property real ry: valid ? Math.min(a.points[0].y, a.points[1].y) - overlay.sy : 0
-                readonly property real rw: valid ? Math.abs(a.points[1].x - a.points[0].x) : 0
-                readonly property real rh: valid ? Math.abs(a.points[1].y - a.points[0].y) : 0
-                readonly property real zf: (valid && a.zoom) ? a.zoom : 2
-                readonly property real cx: rx + rw / 2
-                readonly property real cy: ry + rh / 2
-                readonly property real corner: Math.min(rw, rh) * 0.12
-                x: rx
-                y: ry
-                width: rw
-                height: rh
-                visible: valid && rw > 0 && rh > 0
+                readonly property bool selected: {
+                    overlay.annRevision;
+                    return overlay.selectedIndex !== null && overlay.model
+                        && overlay.selectedIndex >= 0 && overlay.selectedIndex < overlay.model.items.length
+                        && overlay.model.items[overlay.selectedIndex] === a;
+                }
+                readonly property var off: selected && overlay.moveOffset
+                    ? overlay.moveOffset : { x: 0, y: 0 }
+
+                readonly property real srcMinX: valid ? Math.min(a.points[0].x, a.points[1].x) : 0
+                readonly property real srcMinY: valid ? Math.min(a.points[0].y, a.points[1].y) : 0
+                readonly property real srcW: valid ? Math.abs(a.points[1].x - a.points[0].x) : 0
+                readonly property real srcH: valid ? Math.abs(a.points[1].y - a.points[0].y) : 0
+                readonly property real zf: (valid && a.zoom) ? a.zoom : Config.zoomFactor
+
+                readonly property real srcLX: srcMinX - overlay.sx
+                readonly property real srcLY: srcMinY - overlay.sy
+
+                readonly property bool hasTarget: valid && a.target !== undefined && a.target !== null
+                readonly property real tgtGX: hasTarget ? a.target.x : srcMinX
+                readonly property real tgtGY: hasTarget ? a.target.y : srcMinY
+                readonly property real bubLX: tgtGX - overlay.sx + off.x
+                readonly property real bubLY: tgtGY - overlay.sy + off.y
+                readonly property real bubW: srcW * zf
+                readonly property real bubH: srcH * zf
+                readonly property real corner: Math.min(bubW, bubH) * 0.08
+
+                readonly property real srcCX: srcLX + srcW / 2
+                readonly property real srcCY: srcLY + srcH / 2
+                readonly property real bubCX: bubLX + bubW / 2
+                readonly property real bubCY: bubLY + bubH / 2
+
+                anchors.fill: parent
+                visible: valid && srcW > 0 && srcH > 0
+
+                Rectangle {
+                    x: zoomCell.srcLX
+                    y: zoomCell.srcLY
+                    width: zoomCell.srcW
+                    height: zoomCell.srcH
+                    radius: Math.min(zoomCell.srcW, zoomCell.srcH) * 0.08
+                    color: "transparent"
+                    border.color: overlay.vermilion
+                    border.width: 1.5
+                    antialiasing: true
+                }
+
+                Canvas {
+                    id: connector
+                    anchors.fill: parent
+                    visible: zoomCell.hasTarget
+                    onPaint: {
+                        var ctx = getContext("2d");
+                        ctx.reset();
+                        ctx.strokeStyle = Qt.rgba(overlay.vermilion.r, overlay.vermilion.g,
+                                                  overlay.vermilion.b, 0.55);
+                        ctx.lineWidth = 1.5;
+                        ctx.beginPath();
+                        ctx.moveTo(zoomCell.srcCX, zoomCell.srcCY);
+                        ctx.lineTo(zoomCell.bubCX, zoomCell.bubCY);
+                        ctx.stroke();
+                    }
+                    Connections {
+                        target: zoomCell
+                        function onSrcCXChanged() { connector.requestPaint(); }
+                        function onSrcCYChanged() { connector.requestPaint(); }
+                        function onBubCXChanged() { connector.requestPaint(); }
+                        function onBubCYChanged() { connector.requestPaint(); }
+                    }
+                }
+
+                Rectangle {
+                    x: zoomCell.bubLX + 2
+                    y: zoomCell.bubLY + 2
+                    width: zoomCell.bubW
+                    height: zoomCell.bubH
+                    radius: zoomCell.corner
+                    color: Qt.rgba(0, 0, 0, 0.28)
+                    antialiasing: true
+                    visible: zoomCell.hasTarget
+                }
 
                 Item {
-                    id: zoomClip
-                    anchors.fill: parent
+                    id: bubbleClip
+                    x: zoomCell.bubLX
+                    y: zoomCell.bubLY
+                    width: zoomCell.bubW
+                    height: zoomCell.bubH
+                    visible: zoomCell.hasTarget
                     layer.enabled: true
                     layer.effect: OpacityMask {
                         maskSource: Rectangle {
-                            width: zoomCell.rw
-                            height: zoomCell.rh
+                            width: zoomCell.bubW
+                            height: zoomCell.bubH
                             radius: zoomCell.corner
                             antialiasing: true
                         }
@@ -226,20 +316,22 @@ Item {
                         live: false
                         recursive: false
                         smooth: true
-                        sourceRect: Qt.rect(zoomCell.cx - zoomCell.rw / (2 * zoomCell.zf),
-                                            zoomCell.cy - zoomCell.rh / (2 * zoomCell.zf),
-                                            zoomCell.rw / zoomCell.zf,
-                                            zoomCell.rh / zoomCell.zf)
+                        sourceRect: Qt.rect(zoomCell.srcLX, zoomCell.srcLY,
+                                            zoomCell.srcW, zoomCell.srcH)
                     }
                 }
 
                 Rectangle {
-                    anchors.fill: parent
+                    x: zoomCell.bubLX
+                    y: zoomCell.bubLY
+                    width: zoomCell.bubW
+                    height: zoomCell.bubH
                     radius: zoomCell.corner
                     color: "transparent"
                     border.color: overlay.vermilion
                     border.width: 2
                     antialiasing: true
+                    visible: zoomCell.hasTarget
                 }
             }
         }
