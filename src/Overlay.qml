@@ -78,6 +78,8 @@ Item {
     Item {
         id: scene
         anchors.fill: parent
+        opacity: overlay.ready ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
 
         ScreencopyView {
             id: frozen
@@ -211,11 +213,15 @@ Item {
         anchors.fill: parent
         color: overlay.dimColor
         visible: overlay.ready && overlay.localSel === null
+        opacity: overlay.ready ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
     }
 
     Item {
         anchors.fill: parent
         visible: overlay.ready && overlay.localSel !== null
+        opacity: overlay.ready ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
         Rectangle {
             color: overlay.dimColor
             x: 0; y: 0; width: parent.width
@@ -250,6 +256,12 @@ Item {
         y: overlay.localSel ? overlay.localSel.y : 0
         width: overlay.localSel ? overlay.localSel.w : 0
         height: overlay.localSel ? overlay.localSel.h : 0
+
+        opacity: visible ? 1 : 0
+        scale: visible ? 1 : 0.985
+        transformOrigin: Item.Center
+        Behavior on opacity { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+        Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
 
         Rectangle {
             anchors.fill: parent
@@ -354,6 +366,7 @@ Item {
     }
 
     MouseArea {
+        id: drawArea
         anchors.fill: parent
         enabled: overlay.ready
         hoverEnabled: true
@@ -456,6 +469,130 @@ Item {
                     }
                     onReleased: overlay.resizeEnded()
                 }
+            }
+        }
+    }
+
+    Item {
+        id: loupe
+        enabled: false
+
+        readonly property int box: 110
+        readonly property real zoom: 8
+        readonly property real sampleR: box / (2 * zoom)
+        readonly property real margin: 24
+
+        readonly property real cux: drawArea.mouseX
+        readonly property real cuy: drawArea.mouseY
+        readonly property bool flipX: cux + margin + box > overlay.width
+        readonly property bool flipY: cuy + margin + box > overlay.height
+
+        /**
+         * Preferred offset places the loupe down-right of the cursor, flipping
+         * to up/left near the far edges. The clamp is a floor for the flipped
+         * branch: on a monitor narrower or shorter than the loupe plus margins
+         * (e.g. a slim portrait secondary) the flipped offset would otherwise
+         * run off the near edge. It never moves the loupe on a normally sized
+         * screen, where the flip alone already keeps it inside.
+         */
+        function place(flip, cursor, extent) {
+            var pos = flip ? cursor - margin - box : cursor + margin;
+            return Math.max(0, Math.min(pos, extent - box));
+        }
+
+        width: box
+        height: box
+        x: place(flipX, cux, overlay.width)
+        y: place(flipY, cuy, overlay.height)
+
+        visible: overlay.ready && overlay.phase === "selecting" && drawArea.containsMouse
+        opacity: visible ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+
+        Item {
+            id: loupeClip
+            anchors.fill: parent
+            layer.enabled: true
+            layer.effect: OpacityMask {
+                maskSource: Rectangle {
+                    width: loupe.box
+                    height: loupe.box
+                    radius: 12
+                    antialiasing: true
+                }
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                color: overlay.dimColor
+            }
+
+            ShaderEffectSource {
+                anchors.fill: parent
+                sourceItem: frozen
+                live: loupe.visible
+                recursive: false
+                smooth: false
+                sourceRect: Qt.rect(loupe.cux - loupe.sampleR,
+                                     loupe.cuy - loupe.sampleR,
+                                     loupe.sampleR * 2,
+                                     loupe.sampleR * 2)
+            }
+
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: 0
+                width: 1
+                height: parent.height
+                color: Qt.rgba(overlay.vermilion.r, overlay.vermilion.g, overlay.vermilion.b, 0.7)
+            }
+
+            Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                x: 0
+                height: 1
+                width: parent.width
+                color: Qt.rgba(overlay.vermilion.r, overlay.vermilion.g, overlay.vermilion.b, 0.7)
+            }
+
+            Rectangle {
+                anchors.centerIn: parent
+                width: loupe.zoom
+                height: loupe.zoom
+                color: "transparent"
+                border.color: overlay.vermilion
+                border.width: 1
+                antialiasing: true
+            }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            radius: 12
+            color: "transparent"
+            border.color: overlay.vermilion
+            border.width: 1.5
+            antialiasing: true
+        }
+
+        Rectangle {
+            anchors.horizontalCenter: loupeClip.horizontalCenter
+            anchors.top: loupeClip.bottom
+            anchors.topMargin: 6
+            width: coordText.implicitWidth + 12
+            height: coordText.implicitHeight + 6
+            radius: 5
+            color: Theme.glassBg
+            border.color: Theme.glassBorder
+            border.width: 1
+
+            Text {
+                id: coordText
+                anchors.centerIn: parent
+                text: Math.round(loupe.cux + overlay.sx) + ", " + Math.round(loupe.cuy + overlay.sy)
+                color: overlay.vermilion
+                font.family: Theme.monoFamily
+                font.pixelSize: 11
             }
         }
     }

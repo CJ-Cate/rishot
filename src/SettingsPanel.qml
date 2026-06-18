@@ -37,6 +37,12 @@ Item {
     implicitWidth: card.implicitWidth
     implicitHeight: card.implicitHeight + arrow
 
+    transformOrigin: Item.Bottom
+    opacity: visible ? 1 : 0
+    scale: visible ? 1 : 0.96
+    Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+    Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+
     Process {
         id: detectProc
         command: ["sh", "-c",

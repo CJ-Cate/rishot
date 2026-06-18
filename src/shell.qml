@@ -23,6 +23,25 @@ ShellRoot {
     property bool settingsOpen: false
     property bool textEditing: false
 
+    property real toolbarDX: 0
+    property real toolbarDY: 0
+    property string openPopover: ""
+
+    /**
+     * Single-key tool shortcuts, mirroring Toolbar's tool descriptors. Kept here
+     * so the Keys.onPressed mapping and the toolbar tooltips stay in sync.
+     */
+    readonly property var toolKeys: ({
+        "v": "select", "r": "rect", "o": "ellipse", "l": "line", "a": "arrow",
+        "p": "pen", "h": "marker", "n": "step", "t": "text", "b": "blur", "x": "pixelate"
+    })
+
+    function selectTool(t) {
+        if (textEditing) commitText();
+        clearSelection();
+        activeTool = t;
+    }
+
     property var selectedIndex: null
     property var moveOffset: null
     property var moveStart: null
@@ -581,21 +600,55 @@ ShellRoot {
                 : null
 
             FocusScope {
+                id: keyScope
                 anchors.fill: parent
                 focus: true
 
+                /**
+                 * Re-asserts scope focus once no overlay child holds it. The
+                 * SettingsPanel key-catcher and the colour hex field grab active
+                 * focus while open; when they hide, Qt drops their focus without
+                 * restoring the scope default, which would silently kill the
+                 * single-key tool shortcuts. Re-grabbing here keeps them live.
+                 */
+                function reclaimFocus() {
+                    if (!root.textEditing && root.openPopover === "" && !root.settingsOpen)
+                        keyScope.forceActiveFocus();
+                }
+
+                Connections {
+                    target: root
+                    function onOpenPopoverChanged() { keyScope.reclaimFocus(); }
+                    function onSettingsOpenChanged() { keyScope.reclaimFocus(); }
+                }
+
                 Keys.onEscapePressed: {
                     if (root.textEditing) root.cancelText();
+                    else if (root.openPopover !== "") root.openPopover = "";
                     else if (root.settingsOpen) root.settingsOpen = false;
                     else if (root.selectedIndex !== null) root.clearSelection();
                     else Qt.quit();
                 }
                 Keys.onPressed: (e) => {
                     if (root.textEditing) return;
-                    if (e.key === Qt.Key_C && (e.modifiers & Qt.ControlModifier)) { root.doCopy(); e.accepted = true; }
-                    else if (e.key === Qt.Key_Z && (e.modifiers & Qt.ControlModifier)) { root.undo(); e.accepted = true; }
-                    else if (e.key === Qt.Key_Y && (e.modifiers & Qt.ControlModifier)) { root.redo(); e.accepted = true; }
-                    else if ((e.key === Qt.Key_Delete || e.key === Qt.Key_Backspace) && root.selectedIndex !== null) { root.deleteSelected(); e.accepted = true; }
+                    if (e.modifiers & Qt.ControlModifier) {
+                        if (e.key === Qt.Key_C) { root.doCopy(); e.accepted = true; }
+                        else if (e.key === Qt.Key_Z) { root.undo(); e.accepted = true; }
+                        else if (e.key === Qt.Key_Y) { root.redo(); e.accepted = true; }
+                        return;
+                    }
+                    if (e.modifiers & (Qt.AltModifier | Qt.MetaModifier)) return;
+                    if ((e.key === Qt.Key_Delete || e.key === Qt.Key_Backspace) && root.selectedIndex !== null) {
+                        root.deleteSelected();
+                        e.accepted = true;
+                        return;
+                    }
+                    var t = root.toolKeys[e.text];
+                    if (t !== undefined) {
+                        root.openPopover = "";
+                        root.selectTool(t);
+                        e.accepted = true;
+                    }
                 }
 
                 Overlay {
@@ -637,25 +690,36 @@ ShellRoot {
 
                     x: {
                         if (!win.selLocal) return 0;
-                        var cx = win.selLocal.x + win.selLocal.w / 2 - width / 2;
+                        var cx = win.selLocal.x + win.selLocal.w / 2 - width / 2 + root.toolbarDX;
                         return Math.max(8, Math.min(cx, win.width - width - 8));
                     }
                     y: {
                         if (!win.selLocal) return 0;
                         var below = win.selLocal.y + win.selLocal.h + 12;
                         if (below + height > win.height - 8) below = win.selLocal.y - height - 12;
-                        return Math.max(8, below);
+                        return Math.max(8, Math.min(below + root.toolbarDY, win.height - height - 8));
                     }
 
-                    onToolPicked: (t) => { if (root.textEditing) root.commitText(); root.clearSelection(); root.activeTool = t; }
-                    onColorPicked: (c) => root.activeColor = c
-                    onWidthPicked: (w) => root.activeWidth = w
+                    onToolPicked: (t) => root.selectTool(t)
+                    onColorButtonClicked: { root.settingsOpen = false; root.openPopover = root.openPopover === "color" ? "" : "color"; }
+                    onWidthButtonClicked: { root.settingsOpen = false; root.openPopover = root.openPopover === "width" ? "" : "width"; }
                     onUndoRequested: root.undo()
                     onRedoRequested: root.redo()
                     onCopyRequested: root.doCopy()
                     onSaveRequested: root.doSave()
                     onUploadRequested: root.doUpload()
-                    onSettingsRequested: root.settingsOpen = !root.settingsOpen
+                    onSettingsRequested: { root.openPopover = ""; root.settingsOpen = !root.settingsOpen; }
+                    onDragMoved: (dx, dy) => {
+                        if (!win.selLocal) return;
+                        var ax = win.selLocal.x + win.selLocal.w / 2 - toolbar.width / 2;
+                        var ay = win.selLocal.y + win.selLocal.h + 12;
+                        if (ay + toolbar.height > win.height - 8) ay = win.selLocal.y - toolbar.height - 12;
+                        var minDX = 8 - ax, maxDX = (win.width - toolbar.width - 8) - ax;
+                        var minDY = 8 - ay, maxDY = (win.height - toolbar.height - 8) - ay;
+                        root.toolbarDX = Math.max(minDX, Math.min(root.toolbarDX + dx, maxDX));
+                        root.toolbarDY = Math.max(minDY, Math.min(root.toolbarDY + dy, maxDY));
+                    }
+                    onDragReset: { root.toolbarDX = 0; root.toolbarDY = 0; }
                 }
 
                 SettingsPanel {
@@ -674,6 +738,26 @@ ShellRoot {
                     }
                     onCloseRequested: root.settingsOpen = false
                     onRebound: Qt.quit()
+                }
+
+                ColorPopover {
+                    id: colorPopover
+                    visible: toolbar.visible && root.openPopover === "color"
+                    selected: root.activeColor
+                    x: Math.max(8, Math.min(toolbar.x + toolbar.colorCenterX - width / 2,
+                                            win.width - width - 8))
+                    y: Math.min(toolbar.y + toolbar.height + 6, win.height - height - 8)
+                    onPicked: (c) => root.activeColor = c
+                }
+
+                WidthPopover {
+                    id: widthPopover
+                    visible: toolbar.visible && root.openPopover === "width"
+                    selected: root.activeWidth
+                    x: Math.max(8, Math.min(toolbar.x + toolbar.widthCenterX - width / 2,
+                                            win.width - width - 8))
+                    y: Math.min(toolbar.y + toolbar.height + 6, win.height - height - 8)
+                    onPicked: (w) => { root.activeWidth = w; root.openPopover = ""; }
                 }
             }
 
