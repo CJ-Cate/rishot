@@ -109,6 +109,15 @@ Item {
             return out;
         }
 
+        function zoomItems() {
+            var src = overlay.model ? overlay.model.items : [];
+            var out = [];
+            for (var i = 0; i < src.length; i++)
+                if (src[i] && src[i].type === "zoom") out.push(src[i]);
+            if (overlay.draft && overlay.draft.type === "zoom") out.push(overlay.draft);
+            return out;
+        }
+
         Repeater {
             model: { overlay.annRevision; return scene.blurItems(); }
 
@@ -172,6 +181,65 @@ Item {
                     sourceRect: Qt.rect(parent.rx, parent.ry, parent.rw, parent.rh)
                     textureSize: Qt.size(Math.max(1, parent.rw / scene.mosaicFactor),
                                          Math.max(1, parent.rh / scene.mosaicFactor))
+                }
+            }
+        }
+
+        Repeater {
+            model: { overlay.annRevision; return scene.zoomItems(); }
+
+            Item {
+                id: zoomCell
+                required property var modelData
+                readonly property var a: modelData
+                readonly property bool valid: a !== undefined && a !== null && a.points !== undefined && a.points.length >= 2
+                readonly property real rx: valid ? Math.min(a.points[0].x, a.points[1].x) - overlay.sx : 0
+                readonly property real ry: valid ? Math.min(a.points[0].y, a.points[1].y) - overlay.sy : 0
+                readonly property real rw: valid ? Math.abs(a.points[1].x - a.points[0].x) : 0
+                readonly property real rh: valid ? Math.abs(a.points[1].y - a.points[0].y) : 0
+                readonly property real zf: (valid && a.zoom) ? a.zoom : 2
+                readonly property real cx: rx + rw / 2
+                readonly property real cy: ry + rh / 2
+                readonly property real corner: Math.min(rw, rh) * 0.12
+                x: rx
+                y: ry
+                width: rw
+                height: rh
+                visible: valid && rw > 0 && rh > 0
+
+                Item {
+                    id: zoomClip
+                    anchors.fill: parent
+                    layer.enabled: true
+                    layer.effect: OpacityMask {
+                        maskSource: Rectangle {
+                            width: zoomCell.rw
+                            height: zoomCell.rh
+                            radius: zoomCell.corner
+                            antialiasing: true
+                        }
+                    }
+
+                    ShaderEffectSource {
+                        anchors.fill: parent
+                        sourceItem: frozen
+                        live: false
+                        recursive: false
+                        smooth: true
+                        sourceRect: Qt.rect(zoomCell.cx - zoomCell.rw / (2 * zoomCell.zf),
+                                            zoomCell.cy - zoomCell.rh / (2 * zoomCell.zf),
+                                            zoomCell.rw / zoomCell.zf,
+                                            zoomCell.rh / zoomCell.zf)
+                    }
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: zoomCell.corner
+                    color: "transparent"
+                    border.color: overlay.vermilion
+                    border.width: 2
+                    antialiasing: true
                 }
             }
         }

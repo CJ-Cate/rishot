@@ -33,7 +33,8 @@ ShellRoot {
      */
     readonly property var toolKeys: ({
         "v": "select", "r": "rect", "o": "ellipse", "l": "line", "a": "arrow",
-        "p": "pen", "h": "marker", "n": "step", "t": "text", "b": "blur", "x": "pixelate"
+        "p": "pen", "h": "marker", "n": "step", "t": "text", "b": "blur", "x": "pixelate",
+        "z": "zoom"
     })
 
     function selectTool(t) {
@@ -197,7 +198,7 @@ ShellRoot {
     function hitOne(a, gx, gy) {
         var tol = Math.max(a.width || 4, 8);
         if (a.type === "rect" || a.type === "marker" || a.type === "blur"
-            || a.type === "pixelate" || a.type === "text")
+            || a.type === "pixelate" || a.type === "zoom" || a.type === "text")
             return inBox(gx, gy, bboxOf(a), a.type === "text" ? 0 : tol);
         if (a.type === "step") {
             var r = (a.size || 32) / 2 + tol;
@@ -277,6 +278,8 @@ ShellRoot {
             draft = { type: "marker", points: [p, p], color: String(Theme.markerYellow), width: activeWidth, filled: true };
         else if (activeTool === "blur" || activeTool === "pixelate")
             draft = { type: activeTool, points: [p, p] };
+        else if (activeTool === "zoom")
+            draft = { type: "zoom", points: [p, p], zoom: Config.zoomFactor };
         else
             draft = { type: activeTool, points: [p, p], color: String(activeColor), width: activeWidth, filled: false };
         bumpAnn();

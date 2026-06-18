@@ -86,7 +86,7 @@ Item {
             readonly property bool isText: present && a.type === "text" && a.points.length >= 1
             readonly property bool isStep: present && a.type === "step" && a.points.length >= 1
             readonly property bool valid: present && a.points.length >= 2
-                && a.type !== "blur" && a.type !== "pixelate"
+                && a.type !== "blur" && a.type !== "pixelate" && a.type !== "zoom"
             readonly property string kind: valid ? a.type : (isText ? "text" : (isStep ? "step" : ""))
             anchors.fill: parent
             visible: valid || isText || isStep

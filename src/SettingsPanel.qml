@@ -257,6 +257,25 @@ Item {
                 }
             }
 
+            Section {
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Zoom factor" }
+                    Item { Layout.fillWidth: true }
+                    Label {
+                        text: "×" + Config.zoomFactor.toFixed(1)
+                        color: panel.vermilion
+                    }
+                }
+                Slider {
+                    from: 15
+                    to: 40
+                    value: Math.round(Config.zoomFactor * 10)
+                    onMoved: (v) => Config.zoomFactor = Math.round(v / 5) / 2
+                    onCommitted: Config.save()
+                }
+            }
+
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1

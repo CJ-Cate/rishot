@@ -8,6 +8,7 @@ Singleton {
 
     property int mosaicFactor: 14
     property int blurRadius: 64
+    property real zoomFactor: 2.0
 
     readonly property string dir: (Quickshell.env("XDG_CONFIG_HOME")
         || (Quickshell.env("HOME") + "/.config")) + "/rishot"
@@ -35,7 +36,8 @@ Singleton {
     function flush() {
         store.setText(JSON.stringify({
             mosaicFactor: config.mosaicFactor,
-            blurRadius: config.blurRadius
+            blurRadius: config.blurRadius,
+            zoomFactor: config.zoomFactor
         }, null, 2));
     }
 
@@ -48,6 +50,7 @@ Singleton {
                 var c = JSON.parse(text());
                 if (typeof c.mosaicFactor === "number") config.mosaicFactor = c.mosaicFactor;
                 if (typeof c.blurRadius === "number") config.blurRadius = c.blurRadius;
+                if (typeof c.zoomFactor === "number") config.zoomFactor = c.zoomFactor;
             } catch (e) {
             }
         }

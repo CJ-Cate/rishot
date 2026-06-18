@@ -58,7 +58,8 @@ Item {
         { id: "step",     icon: "step",     label: "Step",     key: "n" },
         { id: "text",     icon: "text",     label: "Text",     key: "t" },
         { id: "blur",     icon: "blur",     label: "Blur",     key: "b" },
-        { id: "pixelate", icon: "pixelate", label: "Pixelate", key: "x" }
+        { id: "pixelate", icon: "pixelate", label: "Pixelate", key: "x" },
+        { id: "zoom",     icon: "zoom",     label: "Zoom",     key: "z" }
     ]
 
     property string hoverLabel: ""
