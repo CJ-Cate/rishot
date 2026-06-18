@@ -266,29 +266,6 @@ ShellRoot {
         if (phase !== "selecting") { if (hoverWindow !== null) hoverWindow = null; return; }
         hoverWindow = mode === "monitor" ? monitorAt(gx, gy) : windowAt(gx, gy);
     }
-    function parseWindows(activeWs, json) {
-        var rects = [];
-        try {
-            var arr = JSON.parse(json);
-            for (var i = 0; i < arr.length; i++) {
-                var c = arr[i];
-                if (!c.mapped || c.hidden) continue;
-                if (!c.workspace || activeWs.indexOf(c.workspace.id) === -1) continue;
-                if (!c.size || c.size[0] <= 0 || c.size[1] <= 0) continue;
-                rects.push({ x: c.at[0], y: c.at[1], w: c.size[0], h: c.size[1], z: c.focusHistoryID });
-            }
-        } catch (e) { console.log("rishot: parseWindows failed: " + e); }
-        windowRects = rects;
-    }
-    function parseActiveWs(json) {
-        var ids = [];
-        try {
-            var arr = JSON.parse(json);
-            for (var i = 0; i < arr.length; i++)
-                if (arr[i].activeWorkspace) ids.push(arr[i].activeWorkspace.id);
-        } catch (e) { console.log("rishot: parseActiveWs failed: " + e); }
-        return ids;
-    }
     function pointerPressed(gx, gy) {
         if (phase === "selecting") {
             if (mode === "monitor") selectMonitor(gx, gy);
@@ -477,21 +454,12 @@ ShellRoot {
         onExited: () => Qt.quit()
     }
 
-    Process {
-        id: monitorsProc
-        running: true
-        command: ["hyprctl", "monitors", "-j"]
-        stdout: StdioCollector { id: monitorsOut }
-        onExited: { clientsProc.activeWs = root.parseActiveWs(monitorsOut.text); clientsProc.running = true; }
+    WindowProvider {
+        id: windowProvider
+        onWindowsReady: (rects) => root.windowRects = rects
     }
 
-    Process {
-        id: clientsProc
-        property var activeWs: []
-        command: ["hyprctl", "clients", "-j"]
-        stdout: StdioCollector { id: clientsOut }
-        onExited: root.parseWindows(activeWs, clientsOut.text)
-    }
+    Component.onCompleted: windowProvider.refresh()
 
     Process {
         id: stitchProc
