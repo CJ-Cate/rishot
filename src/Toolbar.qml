@@ -41,7 +41,9 @@ Item {
         { id: "pen",     icon: "pen",     implemented: true },
         { id: "marker",  icon: "marker",  implemented: true },
         { id: "text",    icon: "text",    implemented: true },
-        { id: "blur",    icon: "blur",    implemented: true }
+        { id: "step",    icon: "step",    implemented: true },
+        { id: "blur",    icon: "blur",    implemented: true },
+        { id: "pixelate", icon: "pixelate", implemented: true }
     ]
 
     readonly property var swatches: Theme.swatches

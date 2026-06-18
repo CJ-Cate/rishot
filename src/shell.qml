@@ -96,6 +96,26 @@ ShellRoot {
         bumpAnn();
     }
 
+    /**
+     * Places a numbered step badge at the clamped point. The label is the
+     * highest existing step number plus one, so deleting a middle badge leaves
+     * a gap (flameshot-style) instead of producing duplicate labels.
+     */
+    function placeStep(gx, gy) {
+        var p = clampToSel(gx, gy);
+        var n = 0;
+        for (var i = 0; i < model.items.length; i++)
+            if (model.items[i].type === "step" && model.items[i].n > n) n = model.items[i].n;
+        model.add({
+            type: "step",
+            points: [p],
+            color: String(activeColor),
+            n: n + 1,
+            size: activeWidth * 4 + 16
+        });
+        bumpAnn();
+    }
+
     function bboxOf(a) {
         var xs = a.points.map(function (p) { return p.x; });
         var ys = a.points.map(function (p) { return p.y; });
@@ -105,6 +125,10 @@ ShellRoot {
             var size = a.size || 16;
             var w = Math.max((a.text ? a.text.length : 1) * size * 0.6, size);
             return { x: x0, y: y0, w: w, h: size * 1.4 };
+        }
+        if (a.type === "step") {
+            var d = a.size || 32;
+            return { x: x0 - d / 2, y: y0 - d / 2, w: d, h: d };
         }
         return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
     }
@@ -125,8 +149,13 @@ ShellRoot {
 
     function hitOne(a, gx, gy) {
         var tol = Math.max(a.width || 4, 8);
-        if (a.type === "rect" || a.type === "marker" || a.type === "blur" || a.type === "text")
+        if (a.type === "rect" || a.type === "marker" || a.type === "blur"
+            || a.type === "pixelate" || a.type === "text")
             return inBox(gx, gy, bboxOf(a), a.type === "text" ? 0 : tol);
+        if (a.type === "step") {
+            var r = (a.size || 32) / 2 + tol;
+            return Math.hypot(gx - a.points[0].x, gy - a.points[0].y) <= r;
+        }
         if (a.type === "line" || a.type === "arrow")
             return distToSeg(gx, gy, a.points[0], a.points[1]) <= tol;
         if (a.type === "pen") {
@@ -191,6 +220,7 @@ ShellRoot {
     function beginDraw(gx, gy) {
         if (!globalSel || activeTool === "select") return;
         if (activeTool === "text") { placeText(gx, gy); return; }
+        if (activeTool === "step") { placeStep(gx, gy); return; }
         var p = clampToSel(gx, gy);
         pressPoint = p;
         capturing = true;
@@ -198,6 +228,8 @@ ShellRoot {
             draft = { type: activeTool, points: [p], color: String(activeColor), width: activeWidth };
         else if (activeTool === "marker")
             draft = { type: "marker", points: [p, p], color: String(Theme.markerYellow), width: activeWidth, filled: true };
+        else if (activeTool === "blur" || activeTool === "pixelate")
+            draft = { type: activeTool, points: [p, p] };
         else
             draft = { type: activeTool, points: [p, p], color: String(activeColor), width: activeWidth, filled: false };
         bumpAnn();

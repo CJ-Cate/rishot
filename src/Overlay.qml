@@ -55,6 +55,12 @@ Item {
             y1 = y0 + size * 1.4;
             pad = 4;
         }
+        if (a.type === "step") {
+            var d = a.size || 32;
+            x0 -= d / 2; y0 -= d / 2;
+            x1 = x0 + d; y1 = y0 + d;
+            pad = 4;
+        }
         return {
             x: x0 - sx + off.x - pad,
             y: y0 - sy + off.y - pad,
@@ -77,12 +83,23 @@ Item {
             paintCursor: false
         }
 
+        readonly property real mosaicFactor: 14
+
         function blurItems() {
             var src = overlay.model ? overlay.model.items : [];
             var out = [];
             for (var i = 0; i < src.length; i++)
                 if (src[i] && src[i].type === "blur") out.push(src[i]);
             if (overlay.draft && overlay.draft.type === "blur") out.push(overlay.draft);
+            return out;
+        }
+
+        function pixelateItems() {
+            var src = overlay.model ? overlay.model.items : [];
+            var out = [];
+            for (var i = 0; i < src.length; i++)
+                if (src[i] && src[i].type === "pixelate") out.push(src[i]);
+            if (overlay.draft && overlay.draft.type === "pixelate") out.push(overlay.draft);
             return out;
         }
 
@@ -118,6 +135,37 @@ Item {
                     anchors.fill: parent
                     source: blurSrc
                     radius: 64
+                }
+            }
+        }
+
+        Repeater {
+            model: { overlay.annRevision; return scene.pixelateItems(); }
+
+            Item {
+                required property var modelData
+                readonly property var a: modelData
+                readonly property bool valid: a !== undefined && a !== null && a.points !== undefined && a.points.length >= 2
+                readonly property real rx: valid ? Math.min(a.points[0].x, a.points[1].x) - overlay.sx : 0
+                readonly property real ry: valid ? Math.min(a.points[0].y, a.points[1].y) - overlay.sy : 0
+                readonly property real rw: valid ? Math.abs(a.points[1].x - a.points[0].x) : 0
+                readonly property real rh: valid ? Math.abs(a.points[1].y - a.points[0].y) : 0
+                x: rx
+                y: ry
+                width: rw
+                height: rh
+                visible: valid && rw > 0 && rh > 0
+                clip: true
+
+                ShaderEffectSource {
+                    anchors.fill: parent
+                    sourceItem: frozen
+                    live: false
+                    recursive: false
+                    smooth: false
+                    sourceRect: Qt.rect(parent.rx, parent.ry, parent.rw, parent.rh)
+                    textureSize: Qt.size(Math.max(1, parent.rw / scene.mosaicFactor),
+                                         Math.max(1, parent.rh / scene.mosaicFactor))
                 }
             }
         }

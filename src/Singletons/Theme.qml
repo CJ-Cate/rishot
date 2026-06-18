@@ -19,6 +19,7 @@ Singleton {
     readonly property color dimIcon: Qt.rgba(0.77, 0.80, 0.85, 0.35)
     readonly property color winFill: Qt.rgba(0.88, 0.34, 0.23, 0.16)
     readonly property color markerYellow: "#f5d020"
+    readonly property color stepText: white
 
     readonly property var swatches: [
         "#e0563b", "#ffffff", "#1a1a1a", "#e23b3b", "#f2c14e", "#5bbf73", "#4f8fe0"

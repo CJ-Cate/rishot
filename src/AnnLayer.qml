@@ -46,7 +46,7 @@ Item {
     function strokeColorOf(a) {
         if (a.type !== "marker") return a.color;
         var c = Qt.color(a.color);
-        return Qt.rgba(c.r, c.g, c.b, 0.35);
+        return Qt.rgba(c.r, c.g, c.b, 0.32);
     }
 
     function strokeWidthOf(a) {
@@ -84,10 +84,12 @@ Item {
             readonly property var a: modelData
             readonly property bool present: a !== undefined && a !== null && a.points !== undefined
             readonly property bool isText: present && a.type === "text" && a.points.length >= 1
-            readonly property bool valid: present && a.points.length >= 2 && a.type !== "blur"
-            readonly property string kind: valid ? a.type : (isText ? "text" : "")
+            readonly property bool isStep: present && a.type === "step" && a.points.length >= 1
+            readonly property bool valid: present && a.points.length >= 2
+                && a.type !== "blur" && a.type !== "pixelate"
+            readonly property string kind: valid ? a.type : (isText ? "text" : (isStep ? "step" : ""))
             anchors.fill: parent
-            visible: valid || isText
+            visible: valid || isText || isStep
 
             Rectangle {
                 visible: cell.valid && cell.kind === "rect"
@@ -107,10 +109,11 @@ Item {
                 y: cell.valid ? Math.min(cell.a.points[0].y, cell.a.points[1].y) - canvas.sy : 0
                 width: cell.valid ? Math.abs(cell.a.points[1].x - cell.a.points[0].x) : 0
                 height: cell.valid ? Math.abs(cell.a.points[1].y - cell.a.points[0].y) : 0
+                radius: Math.min(width, height) * 0.18
                 color: {
                     if (!cell.valid) return "transparent";
                     var c = Qt.color(cell.a.color);
-                    return Qt.rgba(c.r, c.g, c.b, 0.4);
+                    return Qt.rgba(c.r, c.g, c.b, 0.32);
                 }
                 antialiasing: true
             }
@@ -204,6 +207,29 @@ Item {
                 font.pixelSize: cell.isText ? cell.a.size : 16
                 textFormat: Text.PlainText
                 renderType: Text.NativeRendering
+            }
+
+            Rectangle {
+                readonly property real d: cell.isStep ? (cell.a.size || 32) : 0
+                visible: cell.isStep
+                width: d
+                height: d
+                radius: d / 2
+                x: cell.isStep ? canvas.lp(cell.a, 0).x - d / 2 : 0
+                y: cell.isStep ? canvas.lp(cell.a, 0).y - d / 2 : 0
+                color: cell.isStep ? cell.a.color : "transparent"
+                antialiasing: true
+
+                Text {
+                    anchors.centerIn: parent
+                    text: cell.isStep ? String(cell.a.n) : ""
+                    color: Theme.stepText
+                    font.family: Theme.sansFamily
+                    font.bold: true
+                    font.pixelSize: parent.d * 0.55
+                    textFormat: Text.PlainText
+                    renderType: Text.NativeRendering
+                }
             }
         }
     }
