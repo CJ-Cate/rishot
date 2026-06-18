@@ -1,0 +1,24 @@
+pkgbase = rishot-git
+	pkgdesc = Wayland screenshot and annotation overlay built on Quickshell
+	pkgver = r8
+	pkgrel = 1
+	url = https://github.com/Gakuseei/rishot
+	arch = any
+	license = MIT
+	makedepends = git
+	depends = quickshell
+	depends = wl-clipboard
+	depends = qt6-declarative
+	depends = qt6-svg
+	depends = qt6-5compat
+	depends = qt6-wayland
+	optdepends = imagemagick: stitch a multi-monitor capture into one image
+	optdepends = cliphist: record copied shots into clipboard history
+	optdepends = curl: upload captures
+	optdepends = kdialog: native save-as file dialog
+	provides = rishot
+	conflicts = rishot
+	source = rishot-git::git+https://github.com/Gakuseei/rishot.git
+	sha256sums = SKIP
+
+pkgname = rishot-git
