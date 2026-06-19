@@ -155,6 +155,25 @@ install_files() {
 	[ -f "$PREFIX/src/shell.qml" ] || die "install looks wrong: $PREFIX/src/shell.qml missing"
 	chmod 755 "$PREFIX/bin/rishot"
 	ln -sf "$PREFIX/bin/rishot" "$BINDIR/rishot"
+
+	# Desktop entry + icon so rishot shows up in app launchers.
+	datadir="${XDG_DATA_HOME:-$HOME/.local/share}"
+	icon_src=""
+	if [ -n "$self_dir" ] && [ -f "$self_dir/packaging/rishot.svg" ]; then icon_src="$self_dir/packaging/rishot.svg"
+	elif [ -f "$PREFIX/packaging/rishot.svg" ]; then icon_src="$PREFIX/packaging/rishot.svg"
+	fi
+	if [ -n "$icon_src" ]; then
+		mkdir -p "$datadir/icons/hicolor/scalable/apps"
+		cp "$icon_src" "$datadir/icons/hicolor/scalable/apps/rishot.svg"
+	fi
+	desk_src=""
+	if [ -n "$self_dir" ] && [ -f "$self_dir/rishot.desktop" ]; then desk_src="$self_dir/rishot.desktop"
+	elif [ -f "$PREFIX/rishot.desktop" ]; then desk_src="$PREFIX/rishot.desktop"
+	fi
+	if [ -n "$desk_src" ]; then
+		mkdir -p "$datadir/applications"
+		cp "$desk_src" "$datadir/applications/rishot.desktop"
+	fi
 }
 
 check_path() {

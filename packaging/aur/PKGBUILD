@@ -39,6 +39,7 @@ package() {
 
 	install -Dm755 bin/rishot "$pkgdir/usr/bin/rishot"
 	install -Dm644 rishot.desktop "$pkgdir/usr/share/applications/rishot.desktop"
+	install -Dm644 packaging/rishot.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/rishot.svg"
 
 	if [ -f README.md ]; then
 		install -Dm644 README.md "$pkgdir/usr/share/doc/rishot/README.md"
