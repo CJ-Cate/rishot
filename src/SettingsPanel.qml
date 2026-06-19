@@ -236,13 +236,6 @@ Item {
                     onMoved: (v) => Config.mosaicFactor = v
                     onCommitted: Config.save()
                 }
-                Label {
-                    Layout.fillWidth: true
-                    text: "bigger = chunkier censor blocks for the pixelate tool"
-                    color: Theme.dimIcon
-                    font.pixelSize: 11
-                    wrapMode: Text.WordWrap
-                }
             }
 
             Section {
@@ -261,13 +254,6 @@ Item {
                     value: Config.blurRadius
                     onMoved: (v) => Config.blurRadius = v
                     onCommitted: Config.save()
-                }
-                Label {
-                    Layout.fillWidth: true
-                    text: "higher = softer blur for the blur tool"
-                    color: Theme.dimIcon
-                    font.pixelSize: 11
-                    wrapMode: Text.WordWrap
                 }
             }
 
