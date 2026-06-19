@@ -26,6 +26,7 @@ Item {
     signal movedTo(real gx, real gy)
     signal hovered(real gx, real gy)
     signal released()
+    signal captureTimedOut()
     signal textChanged(string t)
     signal textCommitted()
     signal resizeStarted(string role, real gx, real gy)
@@ -300,7 +301,7 @@ Item {
             } else if (tries > 60) {
                 running = false;
                 console.warn("rishot: screen capture timed out after 3s, no frame from compositor");
-                Qt.quit();
+                overlay.captureTimedOut();
             } else {
                 frozen.captureFrame();
             }
@@ -374,7 +375,7 @@ Item {
                 : ""
             color: overlay.vermilion
             style: Text.Outline
-            styleColor: Qt.rgba(0, 0, 0, 0.55)
+            styleColor: Qt.rgba(0, 0, 0, 0.7)
             font.family: Theme.monoFamily
             font.pixelSize: 13
             x: 0

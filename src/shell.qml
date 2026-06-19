@@ -70,6 +70,7 @@ ShellRoot {
     function textSize() { return activeWidth * 5 + 8; }
 
     property var overlays: []
+    property int captureFails: 0
 
     readonly property string mode: Quickshell.env("RISHOT_MODE") === "monitor" ? "monitor" : "region"
     readonly property string homeDir: Quickshell.env("HOME") || "/tmp"
@@ -634,6 +635,13 @@ ShellRoot {
                     onResizeStarted: (role, gx, gy) => root.beginResize(role, gx, gy)
                     onResizeMoved: (gx, gy) => root.updateResize(gx, gy)
                     onResizeEnded: root.endResize()
+                    onCaptureTimedOut: {
+                        root.captureFails += 1;
+                        if (root.captureFails >= Quickshell.screens.length) {
+                            console.warn("rishot: no screen produced a frame, quitting");
+                            Qt.quit();
+                        }
+                    }
                     onTextChanged: (t) => { if (root.draft && root.draft.type === "text") { root.draft.text = t; root.bumpAnn(); } }
                     onTextCommitted: root.commitText()
                 }

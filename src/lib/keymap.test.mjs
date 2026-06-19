@@ -1,7 +1,7 @@
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
-const { keyName, bindString, luaFile, parseBind,
-    confLine, confFile, bindLineFor, replaceLuaBind, replaceConfBind,
+const { keyName, bindString, parseBind,
+    confLine, replaceLuaBind, replaceConfBind,
     parseConfBind } = require("./keymap.js");
 
 const K = {
@@ -52,10 +52,10 @@ eq(bindString(K.Shift, M.SHIFT, ""), null, "modifier-only chord -> null");
 eq(bindString(K.P, M.CTRL | M.SHIFT, "p").toUpperCase(), "CTRL + SHIFT + P",
     "Ctrl+Shift+P structural form (upper) == 'CTRL + SHIFT + P'");
 
-const file = luaFile("CTRL + SHIFT + P");
+const file = replaceLuaBind("", "CTRL + SHIFT + P");
 if (file.includes('hl.bind("CTRL + SHIFT + P", hl.dsp.exec_cmd("rishot"))'))
-    console.log("PASS luaFile contains correct bind line");
-else { failed++; console.log("FAIL luaFile bind line\n  got:\n" + file); }
+    console.log("PASS replaceLuaBind writes correct bind line");
+else { failed++; console.log("FAIL replaceLuaBind bind line\n  got:\n" + file); }
 eq(parseBind(file), "CTRL + SHIFT + P", "parseBind round-trips the written bind");
 eq(parseBind('hl.bind("Print", hl.dsp.exec_cmd("rishot"))'), "Print", "parseBind reads default Print");
 
@@ -67,22 +67,12 @@ eq(confLine(K.A, M.CTRL, "a"), "bind = CTRL, a, exec, rishot",
     "Ctrl+a -> 'bind = CTRL, a, exec, rishot'");
 eq(confLine(K.Shift, M.SHIFT, ""), null, "modifier-only chord -> null (conf)");
 
-eq(confFile(K.Print, 0, ""), "bind = , Print, exec, rishot\n",
-    "confFile appends newline");
-eq(confFile(K.Shift, M.SHIFT, ""), null, "confFile of modifier-only -> null");
-
-eq(bindLineFor("conf", K.P, M.SUPER, "p"), "bind = SUPER, p, exec, rishot\n",
-    "bindLineFor conf delegates to confFile");
-eq(bindLineFor("lua", K.P, M.SUPER, "p"),
-    'hl.bind("SUPER + p", hl.dsp.exec_cmd("rishot"))\n',
-    "bindLineFor lua delegates to luaFile via bindString");
-
 eq(parseConfBind("bind = , Print, exec, rishot"), "Print",
     "parseConfBind reads plain Print");
 eq(parseConfBind("bind = SUPER SHIFT, p, exec, rishot"), "SUPER + SHIFT + p",
     "parseConfBind reads SUPER SHIFT + p");
-eq(parseConfBind(confFile(K.S, M.SHIFT | M.SUPER, "s")), "SUPER + SHIFT + s",
-    "parseConfBind round-trips confFile");
+eq(parseConfBind(replaceConfBind("", K.S, M.SHIFT | M.SUPER)), "SUPER + SHIFT + s",
+    "parseConfBind round-trips replaceConfBind");
 eq(parseConfBind("# just a comment"), null, "parseConfBind ignores non-bind text");
 
 eq(parseConfBind("bind = SUPER, T, exec, kitty\nbind = SUPER SHIFT, p, exec, rishot"),

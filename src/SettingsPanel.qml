@@ -8,7 +8,7 @@ import "Singletons"
 Item {
     id: panel
     property string luaPath: ""
-    property string hotkey: "—"
+    property string hotkey: "unset"
     property bool listening: false
 
     signal closeRequested()
@@ -70,6 +70,7 @@ Item {
     FileView {
         id: reader
         path: panel.bindTarget
+        blockLoading: true
         onLoaded: {
             panel.currentText = text();
             var b = panel.format === "lua" ? Keymap.parseBind(text()) : Keymap.parseConfBind(text());
@@ -351,6 +352,8 @@ Item {
                     visible: !panel.isHyprland
                     Layout.fillWidth: true
                     text: "bind 'rishot' to a key in your compositor config"
+                    color: Theme.dimIcon
+                    font.pixelSize: 11
                     wrapMode: Text.WordWrap
                 }
             }

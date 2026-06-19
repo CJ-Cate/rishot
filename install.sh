@@ -124,7 +124,7 @@ install_deps() {
 	zypper)
 		say "Installing deps via zypper…"
 		sudo zypper install -y wl-clipboard \
-			qt6-declarative qt6-svg qt6-5compat qt6-wayland \
+			qt6-declarative qt6-svg qt6-qt5compat qt6-wayland \
 			|| warn "some zypper deps failed"
 		sudo zypper install -y quickshell || {
 			warn "quickshell is not in base openSUSE repos; add an OBS repo first"
