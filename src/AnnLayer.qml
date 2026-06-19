@@ -14,11 +14,11 @@ Item {
     property var moveOffset: null
 
     function shifted(a, dx, dy) {
-        var pts = [];
+        var copy = {};
+        for (var k in a) copy[k] = a[k];
+        copy.points = [];
         for (var i = 0; i < a.points.length; i++)
-            pts.push({ x: a.points[i].x + dx, y: a.points[i].y + dy });
-        var copy = JSON.parse(JSON.stringify(a));
-        copy.points = pts;
+            copy.points.push({ x: a.points[i].x + dx, y: a.points[i].y + dy });
         return copy;
     }
 

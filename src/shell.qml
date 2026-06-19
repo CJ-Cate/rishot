@@ -55,9 +55,7 @@ ShellRoot {
     function textSize() { return activeWidth * 5 + 8; }
 
     property var overlays: []
-    property int frozenCount: 0
 
-    readonly property bool testRect: Quickshell.env("RISHOT_TESTRECT") === "1"
     readonly property string mode: Quickshell.env("RISHOT_MODE") === "monitor" ? "monitor" : "region"
     readonly property string homeDir: Quickshell.env("HOME") || "/tmp"
     readonly property string tmpDir: Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"
@@ -290,7 +288,7 @@ ShellRoot {
         if (isFreehand(draft.type)) {
             var last = draft.points[draft.points.length - 1];
             if (Math.abs(p.x - last.x) < 2 && Math.abs(p.y - last.y) < 2) return;
-            draft.points = draft.points.concat([p]);
+            draft.points.push(p);
         } else {
             draft.points = [pressPoint, p];
         }
@@ -567,11 +565,6 @@ ShellRoot {
         command: ["mkdir", "-p", root.shotsDir]
     }
 
-    function noteFrozen() {
-        frozenCount += 1;
-        if (testRect && frozenCount >= Quickshell.screens.length) testDriver.start();
-    }
-
     function toolbarFor(win) {
         if (phase !== "editing" || !globalSel) return { visible: false, x: 0, y: 0 };
         if (anchorOverlay() !== win) return { visible: false, x: 0, y: 0 };
@@ -636,6 +629,8 @@ ShellRoot {
                     if (root.textEditing) return;
                     if (e.modifiers & Qt.ControlModifier) {
                         if (e.key === Qt.Key_C) { root.doCopy(); e.accepted = true; }
+                        else if (e.key === Qt.Key_S) { if (root.phase === "editing") root.doSave(); e.accepted = true; }
+                        else if (e.key === Qt.Key_U) { if (root.phase === "editing") root.doUpload(); e.accepted = true; }
                         else if (e.key === Qt.Key_Z) { root.undo(); e.accepted = true; }
                         else if (e.key === Qt.Key_Y) { root.redo(); e.accepted = true; }
                         return;
@@ -650,6 +645,18 @@ ShellRoot {
                     if (t !== undefined) {
                         root.openPopover = "";
                         root.selectTool(t);
+                        e.accepted = true;
+                    } else if (root.phase === "editing" && e.text === ",") {
+                        root.openPopover = "";
+                        root.settingsOpen = !root.settingsOpen;
+                        e.accepted = true;
+                    } else if (root.phase === "editing" && e.text === "c") {
+                        root.settingsOpen = false;
+                        root.openPopover = root.openPopover === "color" ? "" : "color";
+                        e.accepted = true;
+                    } else if (root.phase === "editing" && e.text === "w") {
+                        root.settingsOpen = false;
+                        root.openPopover = root.openPopover === "width" ? "" : "width";
                         e.accepted = true;
                     }
                 }
@@ -676,7 +683,6 @@ ShellRoot {
                     onResizeStarted: (role, gx, gy) => root.beginResize(role, gx, gy)
                     onResizeMoved: (gx, gy) => root.updateResize(gx, gy)
                     onResizeEnded: root.endResize()
-                    onFrozen: root.noteFrozen()
                     onTextChanged: (t) => { if (root.draft && root.draft.type === "text") { root.draft.text = t; root.bumpAnn(); } }
                     onTextCommitted: root.commitText()
                 }
@@ -767,78 +773,6 @@ ShellRoot {
             Component.onCompleted: root.overlays.push(win)
 
             function grabExport(path, cb) { ov.grabExport(path, cb); }
-            function grabToolbar(path, cb) {
-                var sched = toolbar.grabToImage(function (r) {
-                    var ok = false;
-                    try { ok = r ? r.saveToFile(path) : false; } catch (e) { ok = false; }
-                    if (cb) cb(ok);
-                });
-                if (!sched && cb) cb(false);
-            }
-        }
-    }
-
-    Timer {
-        id: testDriver
-        interval: 400
-        repeat: false
-        onTriggered: {
-            root.globalSel = { x: 2750, y: 350, w: 760, h: 480 };
-            root.phase = "editing";
-            var bx = 2750, by = 350;
-            root.model.add({
-                type: "ellipse",
-                points: [{ x: bx + 40, y: by + 40 }, { x: bx + 240, y: by + 180 }],
-                color: "#4f8fe0", width: 4, filled: false
-            });
-            root.model.add({
-                type: "line",
-                points: [{ x: bx + 300, y: by + 60 }, { x: bx + 700, y: by + 200 }],
-                color: "#f2c14e", width: 7, filled: false
-            });
-            root.model.add({
-                type: "arrow",
-                points: [{ x: bx + 60, y: by + 440 }, { x: bx + 360, y: by + 260 }],
-                color: "#e23b3b", width: 5, filled: false
-            });
-            var pen = [];
-            for (var i = 0; i <= 40; i++) {
-                var t = i / 40;
-                pen.push({ x: bx + 300 + t * 380, y: by + 320 + Math.sin(t * 6.2832) * 60 });
-            }
-            root.model.add({ type: "pen", points: pen, color: "#5bbf73", width: 3 });
-            var mk = [];
-            for (var j = 0; j <= 20; j++) {
-                var u = j / 20;
-                mk.push({ x: bx + 100 + u * 560, y: by + 410 });
-            }
-            root.model.add({ type: "marker", points: mk, color: "#f2c14e", width: 4 });
-            root.model.add({
-                type: "blur",
-                points: [{ x: bx + 40, y: by + 230 }, { x: bx + 360, y: by + 330 }]
-            });
-            root.model.add({
-                type: "text",
-                points: [{ x: bx + 60, y: by + 20 }],
-                color: "#ffffff", text: "rishot p3b", size: 28
-            });
-            root.bumpAnn();
-            grabTimer.start();
-        }
-    }
-
-    Timer {
-        id: grabTimer
-        interval: 250
-        repeat: false
-        onTriggered: {
-            root.grabTo(root.tmpDir + "/rishot-p3b.png", function (ok) {
-                console.log("rishot-test: annotated grab ok=" + ok);
-                var w = root.anchorOverlay();
-                if (w) w.grabToolbar(root.tmpDir + "/rishot-toolbar.png", function (tok) {
-                    console.log("rishot-test: toolbar grab ok=" + tok);
-                });
-            });
         }
     }
 }

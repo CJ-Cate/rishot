@@ -26,7 +26,6 @@ Item {
     signal movedTo(real gx, real gy)
     signal hovered(real gx, real gy)
     signal released()
-    signal frozen()
     signal textChanged(string t)
     signal textCommitted()
     signal resizeStarted(string role, real gx, real gy)
@@ -298,9 +297,10 @@ Item {
             if (frozen.hasContent) {
                 running = false;
                 overlay.ready = true;
-                overlay.frozen();
             } else if (tries > 60) {
                 running = false;
+                console.warn("rishot: screen capture timed out after 3s, no frame from compositor");
+                Qt.quit();
             } else {
                 frozen.captureFrame();
             }

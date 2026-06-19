@@ -87,6 +87,18 @@ eq(mz.items[0].points, [{ x: 130, y: 90 }, { x: 230, y: 150 }], "move shifts zoo
 mz.undo();
 eq(mz.items[0].points, [{ x: 100, y: 100 }, { x: 200, y: 160 }], "undo move restores zoom points");
 
+const mc = create();
+mc.add({ type: "rect", points: [{ x: 0, y: 0 }, { x: 1, y: 1 }], color: "#abc", width: 5, filled: true });
+mc.undo();
+mc.redo();
+eq([mc.items[0].color, mc.items[0].width, mc.items[0].filled], ["#abc", 5, true], "clone preserves non-point props");
+
+const mcap = create();
+for (let i = 0; i < 130; i++)
+    mcap.add({ type: "rect", points: [{ x: i, y: i }, { x: i + 1, y: i + 1 }], color: "#fff", width: 1 });
+eq(mcap.items.length, 130, "all items kept regardless of undo cap");
+eq(mcap.undoStack.length, 100, "undo stack capped at limit");
+
 if (failed > 0) {
     console.log("\n" + failed + " test(s) FAILED");
     process.exit(1);
