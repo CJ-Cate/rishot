@@ -71,6 +71,7 @@ Item {
         id: reader
         path: panel.bindTarget
         blockLoading: true
+        printErrors: false
         onLoaded: {
             panel.currentText = text();
             var b = panel.format === "lua" ? Keymap.parseBind(text()) : Keymap.parseConfBind(text());
@@ -82,6 +83,7 @@ Item {
         id: writer
         path: panel.bindTarget
         atomicWrites: true
+        printErrors: false
         onSaved: { reloadProc.running = true; panel.rebound(); }
         onSaveFailed: (err) => console.log("rishot: keybind write failed: " + err)
     }
