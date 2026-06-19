@@ -1,41 +1,32 @@
+<div align="center">
+
+<img src="assets/torii.svg" width="84" alt="rishot">
+
 # rishot
 
-A screenshot and annotation overlay for Wayland, built on [Quickshell](https://quickshell.outfoxxed.me/). Drag a region, click a window, or grab a whole monitor, mark it up, then copy, save, or upload it. rishot started as the screenshot surface inside my Hyprland rice, [Ricelin](https://github.com/Gakuseei/Ricelin), and now runs on its own.
+**Screenshot and annotate, on Wayland**
 
-## Compositor support
+[![license](https://img.shields.io/badge/License-MIT-e0563b?style=flat-square)](LICENSE)
+&nbsp;![compositors](https://img.shields.io/badge/wlroots%20%C2%B7%20Niri%20%C2%B7%20COSMIC-e0563b?style=flat-square)
+&nbsp;![built on quickshell](https://img.shields.io/badge/Built%20on-Quickshell-3a4456?style=flat-square)
 
-Capture works on any wlroots or Wayland compositor that speaks `wlr-screencopy` or `ext-image-copy-capture`. Wherever capture works, so do region selection, monitor selection, and every annotation tool. Window-click selection (click one window to grab just its frame) needs a per-compositor query, and rishot ships those for Hyprland, Sway, and Niri. Everywhere else it falls back to region and monitor selection.
+</div>
 
-| Compositor | Capture | Region + monitor | Window-click |
-| ---------- | ------- | ---------------- | ------------ |
-| Hyprland   | yes     | yes              | yes          |
-| Sway       | yes     | yes              | yes          |
-| Niri       | yes     | yes              | yes          |
-| Wayfire    | yes     | yes              | no (region + monitor only) |
-| COSMIC     | yes     | yes              | no (region + monitor only) |
-| river      | yes     | yes              | no (region + monitor only) |
+<!-- demo.gif drops in here once recorded -->
 
-Any other wlroots compositor lands in the river row: capture plus region and monitor, no window-click.
-
-## Features
-
-- Region, window, and monitor capture
-- Resize the selection after capture with corner and edge handles
-- Tools: rectangle, ellipse, line, arrow, pen, highlighter, text, numbered steps, blur, pixelate, zoom
-- Per-tool memory: each tool keeps its own colour and stroke width
-- Undo and redo
-- Copy to clipboard, save to disk, or upload
-- A settings panel for pixelate coarseness, blur strength, zoom factor, and rebinding the key on Hyprland
+Drag a region, click a window, or grab a whole monitor. Mark it up, then copy, save, or upload. rishot started as the screenshot surface in my Hyprland rice, [Ricelin](https://github.com/Gakuseei/Ricelin), and now stands on its own.
 
 ## Install
-
-### One-line installer
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Gakuseei/rishot/main/install.sh | sh
 ```
 
-Read the script before you pipe it into a shell. To download, inspect, then run:
+Bind a key (see [Keybinding](#keybinding)) and run `rishot`. The installer pulls deps through your package manager and never touches your compositor config.
+
+<details><summary>Other ways to install</summary>
+
+Inspect before you pipe:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Gakuseei/rishot/main/install.sh -o install.sh
@@ -43,9 +34,7 @@ less install.sh
 sh install.sh
 ```
 
-The installer pulls runtime deps through your package manager where it can (pacman/yay/paru, apt, dnf, zypper, xbps; nix is detected but left to you), drops rishot into `~/.local/share/rishot`, and symlinks the launcher into `~/.local/bin`. It never touches your compositor config. It prints the keybind line for you to add. quickshell is in the official repos on Arch (extra), Fedora 44+, Void, and Debian sid / Ubuntu 26.10. On older Fedora it comes from the `errornointernet/quickshell` COPR, which a Qt version mismatch can sometimes break.
-
-### Manual
+From a checkout:
 
 ```sh
 git clone https://github.com/Gakuseei/rishot.git
@@ -53,67 +42,75 @@ cd rishot
 bin/rishot
 ```
 
-`bin/rishot` looks for its config dir in `$RISHOT_CONFIG_DIR`, then `~/.local/share/rishot/src`, `/usr/share/rishot/src`, `/usr/lib/rishot/src`, then `../src` next to the binary. Drop `src/` at any of those and put `rishot` on PATH.
+Quickshell is in the official repos on Arch (extra), Fedora 44+, Void, and Debian sid / Ubuntu 26.10. Older Fedora pulls it from the `errornointernet/quickshell` COPR, which a Qt version mismatch can sometimes break. `bin/rishot` finds its `src/` via `$RISHOT_CONFIG_DIR`, then `~/.local/share/rishot/src`, `/usr/share/rishot/src`, `/usr/lib/rishot/src`, then `../src`.
 
-## Dependencies
+</details>
 
-Required:
+## Features
 
-- `quickshell` (the `qs` binary)
-- Qt 6: declarative, svg, 5compat, wayland
-- `wl-clipboard`, for copy to clipboard
+- Region, window, and monitor capture
+- Resize the selection after the fact with eight handles
+- Twelve tools: rectangle, ellipse, line, arrow, pen, highlighter, text, numbered steps, blur, pixelate, zoom
+- Per-tool memory: every tool keeps its own colour and width
+- Undo and redo, copy, save, upload
+- Settings panel: pixelate coarseness, blur strength, zoom factor, key rebind
 
-Optional:
+## Compositors
 
-- `imagemagick`: stitch a multi-monitor capture into one image
-- `cliphist`: record copied shots into clipboard history
-- `curl`: upload
-- `kdialog`: native save-as dialog
+|  | Capture | Region + monitor | Window-click |
+| --- | --- | --- | --- |
+| Hyprland | yes | yes | yes |
+| Sway | yes | yes | yes |
+| Niri | yes | yes | yes |
+| Wayfire / COSMIC / river | yes | yes | region + monitor only |
 
-## Running
-
-```sh
-rishot            # region: drag a box, or click a window to grab it
-rishot monitor    # click a monitor to grab the whole output
-```
-
-From a checkout without installing, run `bin/rishot`.
+Capture works on any wlroots or `ext-image-copy` compositor. Window-click (grab just one window's frame) ships for Hyprland, Sway and Niri; everywhere else falls back to region and monitor.
 
 ## Keybinding
 
-rishot does not grab a global hotkey for you. Bind the command yourself in your compositor config.
+rishot does not grab a global hotkey. Bind it yourself:
 
-Hyprland (conf):
-
-```
-bind = , Print, exec, rishot
-```
-
-Hyprland (native Lua):
-
-```lua
-hl.bind("Print", hl.dsp.exec_cmd("rishot"))
+```sh
+bind = , Print, exec, rishot                       # Hyprland (conf)
+hl.bind("Print", hl.dsp.exec_cmd("rishot"))        # Hyprland (lua)
+bindsym Print exec rishot                          # Sway
 ```
 
-Sway:
+Run `rishot` for region or window, `rishot monitor` for a whole output.
 
-```
-bindsym Print exec rishot
-```
+<details><summary>Dependencies</summary>
 
-If you rebind from the in-app settings panel on Hyprland, the recorder checks whether your config is `hyprland.conf` or a native `hyprland.lua` and writes the matching form into its own include file, never your main config.
+Required: `quickshell` (the `qs` binary), Qt 6 (declarative, svg, 5compat, wayland), `wl-clipboard`.
 
-## Upload
+Optional: `imagemagick` (multi-monitor stitch), `cliphist` (clip history), `curl` (upload), `kdialog` (save dialog).
 
-Upload posts to `litterbox.catbox.moe` by default. The link it returns is unguessable but **public**, and it expires after 72 hours. It is not authenticated. Set `RISHOT_UPLOAD` to your own endpoint to use a different host. For anything sensitive, copy or save instead.
+</details>
 
-## Environment variables
+<details><summary>Environment variables</summary>
 
-- `RISHOT_CONFIG_DIR`: the Quickshell config dir (the one holding `shell.qml`)
-- `RISHOT_SAVEDIR`: the auto-save directory
-- `RISHOT_UPLOAD`: the upload endpoint (curl form-post target)
-- `RISHOT_KEYBIND_FILE`: a keybind file rishot may write when you rebind from the settings panel
+- `RISHOT_CONFIG_DIR` — the Quickshell config dir (the one holding `shell.qml`)
+- `RISHOT_SAVEDIR` — the auto-save directory
+- `RISHOT_UPLOAD` — the upload endpoint (curl form-post target)
+- `RISHOT_KEYBIND_FILE` — a file rishot writes when you rebind from the settings panel
 
-## Notes
+Rebinding from the settings panel on Hyprland writes a matching conf or lua line into its own include file, never your main config.
 
-Icon centring in the toolbar needs Qt 6.10 or newer. On older Qt the icons box-centre instead, a touch off, but everything works.
+</details>
+
+<details><summary>Upload</summary>
+
+Upload posts to `litterbox.catbox.moe` by default. The link it returns is unguessable but **public**, and it expires after 72 hours. Set `RISHOT_UPLOAD` to use your own host. For anything sensitive, copy or save instead.
+
+</details>
+
+<details><summary>Notes</summary>
+
+Toolbar icon centring needs Qt 6.10 or newer. On older Qt the icons box-centre, a touch off, but everything works.
+
+</details>
+
+---
+
+<div align="center">
+MIT &nbsp;·&nbsp; built with <a href="https://quickshell.outfoxxed.me/">Quickshell</a> &nbsp;·&nbsp; from <a href="https://github.com/Gakuseei/Ricelin">Ricelin</a>
+</div>
