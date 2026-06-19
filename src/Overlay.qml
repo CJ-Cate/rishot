@@ -368,27 +368,17 @@ Item {
             border.width: 1.5
         }
 
-        Rectangle {
-            visible: dimText.text.length > 0
+        Text {
+            text: overlay.globalSel
+                ? "⛩ rishot · " + Math.round(overlay.globalSel.w) + "×" + Math.round(overlay.globalSel.h)
+                : ""
+            color: overlay.vermilion
+            style: Text.Outline
+            styleColor: Qt.rgba(0, 0, 0, 0.55)
+            font.family: Theme.monoFamily
+            font.pixelSize: 13
             x: 0
             y: -height - 4
-            width: dimText.implicitWidth + 12
-            height: dimText.implicitHeight + 6
-            radius: 5
-            color: Theme.glassBg
-            border.color: Theme.glassBorder
-            border.width: 1
-
-            Text {
-                id: dimText
-                anchors.centerIn: parent
-                text: overlay.globalSel
-                    ? "⛩ rishot · " + Math.round(overlay.globalSel.w) + "×" + Math.round(overlay.globalSel.h)
-                    : ""
-                color: overlay.vermilion
-                font.family: Theme.monoFamily
-                font.pixelSize: 13
-            }
         }
     }
 
