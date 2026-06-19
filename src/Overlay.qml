@@ -91,35 +91,17 @@ Item {
 
         readonly property real mosaicFactor: Config.mosaicFactor
 
-        function blurItems() {
+        function itemsOfType(t) {
             var src = overlay.model ? overlay.model.items : [];
             var out = [];
             for (var i = 0; i < src.length; i++)
-                if (src[i] && src[i].type === "blur") out.push(src[i]);
-            if (overlay.draft && overlay.draft.type === "blur") out.push(overlay.draft);
-            return out;
-        }
-
-        function pixelateItems() {
-            var src = overlay.model ? overlay.model.items : [];
-            var out = [];
-            for (var i = 0; i < src.length; i++)
-                if (src[i] && src[i].type === "pixelate") out.push(src[i]);
-            if (overlay.draft && overlay.draft.type === "pixelate") out.push(overlay.draft);
-            return out;
-        }
-
-        function zoomItems() {
-            var src = overlay.model ? overlay.model.items : [];
-            var out = [];
-            for (var i = 0; i < src.length; i++)
-                if (src[i] && src[i].type === "zoom") out.push(src[i]);
-            if (overlay.draft && overlay.draft.type === "zoom") out.push(overlay.draft);
+                if (src[i] && src[i].type === t) out.push(src[i]);
+            if (overlay.draft && overlay.draft.type === t) out.push(overlay.draft);
             return out;
         }
 
         Repeater {
-            model: { overlay.annRevision; return scene.blurItems(); }
+            model: { overlay.annRevision; return scene.itemsOfType("blur"); }
 
             Item {
                 required property var modelData
@@ -155,7 +137,7 @@ Item {
         }
 
         Repeater {
-            model: { overlay.annRevision; return scene.pixelateItems(); }
+            model: { overlay.annRevision; return scene.itemsOfType("pixelate"); }
 
             Item {
                 required property var modelData
@@ -186,7 +168,7 @@ Item {
         }
 
         Repeater {
-            model: { overlay.annRevision; return scene.zoomItems(); }
+            model: { overlay.annRevision; return scene.itemsOfType("zoom"); }
 
             Item {
                 id: zoomCell
