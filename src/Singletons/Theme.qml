@@ -16,7 +16,7 @@ Singleton {
     readonly property color panelBg:    Qt.rgba(24 / 255, 28 / 255, 38 / 255, 0.97)
     readonly property color panelBorder: "#3a4456"
 
-    readonly property color dimIcon: Qt.rgba(0.77, 0.80, 0.85, 0.35)
+    readonly property color dimIcon: Qt.rgba(0.77, 0.80, 0.85, 0.55)
     readonly property color winFill: Qt.rgba(0.88, 0.34, 0.23, 0.16)
     readonly property color markerYellow: "#f5d020"
     readonly property color stepText: white

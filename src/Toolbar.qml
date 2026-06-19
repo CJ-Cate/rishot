@@ -218,7 +218,7 @@ Item {
                 }
                 HoverHandler {
                     onHoveredChanged: hovered
-                        ? tb.showTip("Colour", "", colorBtn.x + row.x + colorBtn.width / 2)
+                        ? tb.showTip("Colour", "c", colorBtn.x + row.x + colorBtn.width / 2)
                         : tb.hideTip("Colour")
                 }
             }
@@ -249,7 +249,7 @@ Item {
                 }
                 HoverHandler {
                     onHoveredChanged: hovered
-                        ? tb.showTip("Width", "", widthBtn.x + row.x + widthBtn.width / 2)
+                        ? tb.showTip("Width", "w", widthBtn.x + row.x + widthBtn.width / 2)
                         : tb.hideTip("Width")
                 }
             }
@@ -297,7 +297,7 @@ Item {
                 onClicked: tb.saveRequested()
                 HoverHandler {
                     onHoveredChanged: hovered
-                        ? tb.showTip("Save", "", saveBtn.x + row.x + saveBtn.width / 2)
+                        ? tb.showTip("Save", "Ctrl+S", saveBtn.x + row.x + saveBtn.width / 2)
                         : tb.hideTip("Save")
                 }
             }
@@ -307,8 +307,8 @@ Item {
                 onClicked: tb.uploadRequested()
                 HoverHandler {
                     onHoveredChanged: hovered
-                        ? tb.showTip("Upload", "", uploadBtn.x + row.x + uploadBtn.width / 2)
-                        : tb.hideTip("Upload")
+                        ? tb.showTip("Upload · public", "Ctrl+U", uploadBtn.x + row.x + uploadBtn.width / 2)
+                        : tb.hideTip("Upload · public")
                 }
             }
 
@@ -321,7 +321,7 @@ Item {
                 onClicked: tb.settingsRequested()
                 HoverHandler {
                     onHoveredChanged: hovered
-                        ? tb.showTip("Settings", "", gear.x + row.x + gear.width / 2)
+                        ? tb.showTip("Settings", ",", gear.x + row.x + gear.width / 2)
                         : tb.hideTip("Settings")
                 }
             }

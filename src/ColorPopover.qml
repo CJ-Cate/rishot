@@ -174,15 +174,20 @@ Item {
                 Repeater {
                     model: Theme.swatches
                     Rectangle {
+                        id: swatch
                         required property var modelData
                         Layout.fillWidth: true
                         Layout.preferredHeight: 18
                         radius: 4
                         color: modelData
                         readonly property bool sel: Qt.colorEqual(pop.selected, modelData)
-                        border.color: sel ? Theme.white : Qt.rgba(1, 1, 1, 0.18)
+                        border.color: sel ? Theme.white
+                            : (swHover.hovered ? Qt.rgba(1, 1, 1, 0.5) : Qt.rgba(1, 1, 1, 0.18))
                         border.width: sel ? 2 : 1
-                        TapHandler { onTapped: pop.picked(modelData) }
+                        scale: swHover.hovered ? 1.12 : 1.0
+                        Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+                        HoverHandler { id: swHover }
+                        TapHandler { onTapped: pop.picked(swatch.modelData) }
                     }
                 }
             }
@@ -201,12 +206,19 @@ Item {
                 }
 
                 Rectangle {
+                    id: hexBox
                     Layout.fillWidth: true
                     Layout.preferredHeight: 24
                     radius: 5
                     color: Qt.rgba(1, 1, 1, 0.06)
                     border.color: Theme.panelBorder
                     border.width: 1
+
+                    SequentialAnimation {
+                        id: hexFlash
+                        ColorAnimation { target: hexBox; property: "border.color"; to: Theme.vermilion; duration: 90 }
+                        ColorAnimation { target: hexBox; property: "border.color"; to: Theme.panelBorder; duration: 240 }
+                    }
 
                     TextInput {
                         id: hexField
@@ -231,9 +243,13 @@ Item {
                         function commit() {
                             var t = text.trim();
                             if (t.length > 0 && t[0] !== "#") t = "#" + t;
+                            if (/^#[0-9a-fA-F]{3}$/.test(t))
+                                t = "#" + t[1] + t[1] + t[2] + t[2] + t[3] + t[3];
                             if (/^#[0-9a-fA-F]{6}$/.test(t)) {
                                 pop.picked(t);
                                 pop.syncFrom(t);
+                            } else {
+                                hexFlash.start();
                             }
                             text = Qt.binding(function () { return pop.hexText; });
                         }
