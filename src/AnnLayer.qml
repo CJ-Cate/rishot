@@ -10,8 +10,12 @@ Item {
     property var model: null
     property var draft: null
     property int revision: 0
+    property int commitRevision: 0
     property var selectedIndex: null
     property var moveOffset: null
+
+    readonly property bool moving: selectedIndex !== null && moveOffset
+        && (moveOffset.x !== 0 || moveOffset.y !== 0)
 
     function shifted(a, dx, dy) {
         var copy = {};
@@ -22,14 +26,23 @@ Item {
         return copy;
     }
 
-    function items() {
-        var src = model ? model.items.slice() : [];
-        if (selectedIndex !== null && moveOffset
-            && (moveOffset.x !== 0 || moveOffset.y !== 0)
-            && selectedIndex >= 0 && selectedIndex < src.length)
-            src[selectedIndex] = shifted(src[selectedIndex], moveOffset.x, moveOffset.y);
-        if (draft) src.push(draft);
-        return src;
+    /** Committed annotations, minus the one being dragged (drawn live by activeItems). */
+    function committedItems() {
+        var src = model ? model.items : [];
+        if (!canvas.moving) return src.slice();
+        var out = [];
+        for (var i = 0; i < src.length; i++)
+            if (i !== selectedIndex) out.push(src[i]);
+        return out;
+    }
+
+    /** The live draft plus, during a drag, the shifted copy of the selected item. */
+    function activeItems() {
+        var out = [];
+        if (canvas.moving && model && selectedIndex >= 0 && selectedIndex < model.items.length)
+            out.push(shifted(model.items[selectedIndex], moveOffset.x, moveOffset.y));
+        if (draft) out.push(draft);
+        return out;
     }
 
     function lp(a, i) {
@@ -75,8 +88,8 @@ Item {
         };
     }
 
-    Repeater {
-        model: { canvas.revision; return canvas.items(); }
+    Component {
+        id: annDelegate
 
         Item {
             id: cell
@@ -232,5 +245,15 @@ Item {
                 }
             }
         }
+    }
+
+    Repeater {
+        model: { canvas.commitRevision; canvas.moving; return canvas.committedItems(); }
+        delegate: annDelegate
+    }
+
+    Repeater {
+        model: { canvas.revision; return canvas.activeItems(); }
+        delegate: annDelegate
     }
 }

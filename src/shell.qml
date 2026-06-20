@@ -22,6 +22,7 @@ ShellRoot {
     property var model: Ann.create()
     property var draft: null
     property int annRevision: 0
+    property int commitRevision: 0
     property bool settingsOpen: false
     property bool textEditing: false
 
@@ -30,14 +31,30 @@ ShellRoot {
     property string openPopover: ""
 
     /**
-     * Single-key tool shortcuts, mirroring Toolbar's tool descriptors. Kept here
-     * so the Keys.onPressed mapping and the toolbar tooltips stay in sync.
+     * Canonical tool descriptors: id, icon, label and single-key shortcut. The
+     * toolbar renders this list and the key handler derives toolKeys from it, so
+     * the tooltips and Keys.onPressed shortcuts cannot drift apart.
      */
-    readonly property var toolKeys: ({
-        "v": "select", "r": "rect", "o": "ellipse", "l": "line", "a": "arrow",
-        "p": "pen", "h": "marker", "n": "step", "t": "text", "b": "blur", "x": "pixelate",
-        "z": "zoom"
-    })
+    readonly property var toolDescriptors: [
+        { id: "select",   icon: "select",   label: "Select",    key: "v" },
+        { id: "rect",     icon: "rect",     label: "Rectangle", key: "r" },
+        { id: "ellipse",  icon: "ellipse",  label: "Ellipse",   key: "o" },
+        { id: "line",     icon: "line",     label: "Line",      key: "l" },
+        { id: "arrow",    icon: "arrow",    label: "Arrow",     key: "a" },
+        { id: "pen",      icon: "pen",      label: "Pen",       key: "p" },
+        { id: "marker",   icon: "marker",   label: "Marker",    key: "h" },
+        { id: "step",     icon: "step",     label: "Step",      key: "n" },
+        { id: "text",     icon: "text",     label: "Text",      key: "t" },
+        { id: "blur",     icon: "blur",     label: "Blur",      key: "b" },
+        { id: "pixelate", icon: "pixelate", label: "Pixelate",  key: "x" },
+        { id: "zoom",     icon: "zoom",     label: "Zoom",      key: "z" }
+    ]
+    readonly property var toolKeys: {
+        var m = {};
+        for (var i = 0; i < toolDescriptors.length; i++)
+            m[toolDescriptors[i].key] = toolDescriptors[i].id;
+        return m;
+    }
 
     function selectTool(t) {
         if (textEditing) commitText();
@@ -50,12 +67,16 @@ ShellRoot {
 
     function setToolColor(c) {
         activeColor = c;
-        toolStyle[activeTool] = { color: c, width: activeWidth };
+        var s = Object.assign({}, toolStyle);
+        s[activeTool] = { color: c, width: activeWidth };
+        toolStyle = s;
     }
 
     function setToolWidth(w) {
         activeWidth = w;
-        toolStyle[activeTool] = { color: activeColor, width: w };
+        var s = Object.assign({}, toolStyle);
+        s[activeTool] = { color: activeColor, width: w };
+        toolStyle = s;
     }
 
     property var selectedIndex: null
@@ -66,6 +87,9 @@ ShellRoot {
     property var windowRects: []
     property bool dialogMode: false
     property string savedAuto: ""
+    property string toastText: ""
+    property bool toastError: false
+    property bool busy: false
 
     function textSize() { return activeWidth * 5 + 8; }
 
@@ -150,7 +174,7 @@ ShellRoot {
         }
         draft = null;
         textEditing = false;
-        bumpAnn();
+        bumpCommit();
     }
     function cancelText() {
         draft = null;
@@ -175,7 +199,7 @@ ShellRoot {
             n: n + 1,
             size: activeWidth * 4 + 16
         });
-        bumpAnn();
+        bumpCommit();
     }
 
     function clearSelection() {
@@ -186,7 +210,7 @@ ShellRoot {
         if (selectedIndex === null) return;
         model.remove(selectedIndex);
         selectedIndex = null;
-        bumpAnn();
+        bumpCommit();
     }
 
     function beginSelect(gx, gy) {
@@ -212,7 +236,7 @@ ShellRoot {
         }
         moveOffset = null;
         moveStart = null;
-        bumpAnn();
+        bumpCommit();
     }
 
     function beginDraw(gx, gy) {
@@ -261,12 +285,19 @@ ShellRoot {
         }
         draft = null;
         pressPoint = null;
-        bumpAnn();
+        bumpCommit();
     }
+    /**
+     * annRevision ticks on every change including live draft points, so the draft
+     * and selection layers re-render at pointer speed. commitRevision ticks only
+     * when model.items actually changes (add/remove/move/undo/redo), so the heavy
+     * committed-annotation Repeaters rebuild on discrete edits, not per draft point.
+     */
     function bumpAnn() { annRevision += 1; }
+    function bumpCommit() { commitRevision += 1; annRevision += 1; }
 
-    function undo() { if (model.undo()) { selectedIndex = null; moveOffset = null; moveStart = null; bumpAnn(); } }
-    function redo() { if (model.redo()) { selectedIndex = null; moveOffset = null; moveStart = null; bumpAnn(); } }
+    function undo() { if (model.undo()) { selectedIndex = null; moveOffset = null; moveStart = null; bumpCommit(); } }
+    function redo() { if (model.redo()) { selectedIndex = null; moveOffset = null; moveStart = null; bumpCommit(); } }
 
     function windowAt(gx, gy) {
         var best = null;
@@ -394,18 +425,33 @@ ShellRoot {
         stitchProc.runWith(args, after);
     }
 
+    /**
+     * Shows a result toast, then quits once it has had a moment on screen. Every
+     * terminal action routes through here so a success and a failure both leave a
+     * visible trace instead of the overlay just vanishing.
+     */
+    function finish(msg, isError) {
+        busy = false;
+        toastError = isError;
+        toastText = msg;
+        dialogMode = false;
+        quitTimer.restart();
+    }
+
+    Timer { id: quitTimer; interval: 1200; onTriggered: Qt.quit() }
+
     function doCopy() {
         var auto = defaultPath;
         grabTo(auto, function (ok) {
             if (ok) copyProc.run(auto);
-            else Qt.quit();
+            else root.finish("Capture failed", true);
         });
     }
 
     function doSave() {
         var auto = root.defaultPath;
         grabTo(auto, function (ok) {
-            if (!ok) { Qt.quit(); return; }
+            if (!ok) { root.finish("Capture failed", true); return; }
             root.savedAuto = auto;
             root.dialogMode = true;
             saveDialog.open();
@@ -415,8 +461,8 @@ ShellRoot {
     function doUpload() {
         var tmp = root.tmpDir + "/rishot-upload.png";
         grabTo(tmp, function (ok) {
-            if (ok) uploadProc.run(tmp);
-            else Qt.quit();
+            if (ok) { root.busy = true; uploadProc.run(tmp); }
+            else root.finish("Capture failed", true);
         });
     }
 
@@ -432,7 +478,7 @@ ShellRoot {
             console.log("rishot: kdialog exit " + code + " path=" + JSON.stringify(chosen));
             if (code === 0 && chosen.length > 0) {
                 if (chosen !== root.savedAuto) copyFileProc.run(root.savedAuto, chosen);
-                else Qt.quit();
+                else root.finish("Saved", false);
             } else {
                 root.dialogMode = false;
             }
@@ -442,7 +488,7 @@ ShellRoot {
     Process {
         id: copyFileProc
         function run(src, dst) { command = ["cp", "--", src, dst]; running = true; }
-        onExited: () => Qt.quit()
+        onExited: () => root.finish("Saved", false)
     }
 
     Process {
@@ -457,7 +503,7 @@ ShellRoot {
                 "_", file];
             running = true;
         }
-        onExited: (code) => { console.log("rishot: wl-copy exit " + code); Qt.quit(); }
+        onExited: (code) => { console.log("rishot: wl-copy exit " + code); root.finish(code === 0 ? "Copied to clipboard" : "Copy failed", code !== 0); }
     }
 
     Process {
@@ -465,7 +511,8 @@ ShellRoot {
         stdout: StdioCollector { id: uploadOut }
         function run(file) {
             command = ["sh", "-c",
-                "out=$(curl -sf --proto '=https' --max-time 30 -A \"Mozilla/5.0\" "
+                "command -v magick >/dev/null 2>&1 && magick \"$1\" -strip \"$1\" >/dev/null 2>&1; "
+                + "out=$(curl -sf --proto '=https' --max-time 30 -A \"Mozilla/5.0\" "
                 + "-F reqtype=fileupload -F time=72h -F fileToUpload=@\"$1\" \"$2\"); "
                 + "rm -f \"$1\"; printf %s \"$out\"",
                 "_", file, root.uploadEndpoint];
@@ -475,7 +522,7 @@ ShellRoot {
             var url = uploadOut.text.trim();
             console.log("rishot: upload exit " + code + " url=" + JSON.stringify(url));
             if (code === 0 && url.indexOf("http") === 0) urlCopyProc.run(url);
-            else Qt.quit();
+            else root.finish("Upload failed", true);
         }
     }
 
@@ -485,7 +532,7 @@ ShellRoot {
             command = ["sh", "-c", "exec 9>&-; printf %s \"$1\" | wl-copy", "_", url];
             running = true;
         }
-        onExited: () => Qt.quit()
+        onExited: () => root.finish("Link copied to clipboard", false)
     }
 
     WindowProvider {
@@ -623,6 +670,7 @@ ShellRoot {
                     model: root.model
                     draft: root.draft
                     annRevision: root.annRevision
+                    commitRevision: root.commitRevision
                     textEditing: root.textEditing
                     selectedIndex: root.selectedIndex
                     moveOffset: root.moveOffset
@@ -649,11 +697,12 @@ ShellRoot {
                 Toolbar {
                     id: toolbar
                     visible: win.showToolbar && win.selLocal !== null
+                    tools: root.toolDescriptors
                     activeTool: root.activeTool
                     activeColor: root.activeColor
                     activeWidth: root.activeWidth
-                    canUndo: { root.annRevision; return root.model ? root.model.canUndo() : false; }
-                    canRedo: { root.annRevision; return root.model ? root.model.canRedo() : false; }
+                    canUndo: { root.commitRevision; return root.model ? root.model.canUndo() : false; }
+                    canRedo: { root.commitRevision; return root.model ? root.model.canRedo() : false; }
                     settingsOpen: root.settingsOpen
 
                     x: {
@@ -726,6 +775,17 @@ ShellRoot {
                                             win.width - width - 8))
                     y: Math.min(toolbar.y + toolbar.height + 6, win.height - height - 8)
                     onPicked: (w) => { root.setToolWidth(w); root.openPopover = ""; }
+                }
+
+                Toast {
+                    visible: (root.toastText !== "" || root.busy) && root.anchorOverlay() === win
+                    text: root.busy ? "Uploading…" : root.toastText
+                    error: root.toastError
+                    busy: root.busy
+                    x: (win.width - width) / 2
+                    y: win.height - height - 48
+                    opacity: visible ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
                 }
             }
 

@@ -43,24 +43,8 @@ Item {
     readonly property color idle: Theme.idle
     readonly property color sep: Theme.sep
 
-    /**
-     * Tool descriptors. label/key drive the hover tooltip; the same single-key
-     * shortcuts are mapped in shell.qml's Keys.onPressed and must stay in sync.
-     */
-    readonly property var tools: [
-        { id: "select",   icon: "select",   label: "Select",   key: "v" },
-        { id: "rect",     icon: "rect",     label: "Rectangle", key: "r" },
-        { id: "ellipse",  icon: "ellipse",  label: "Ellipse",  key: "o" },
-        { id: "line",     icon: "line",     label: "Line",     key: "l" },
-        { id: "arrow",    icon: "arrow",    label: "Arrow",    key: "a" },
-        { id: "pen",      icon: "pen",      label: "Pen",      key: "p" },
-        { id: "marker",   icon: "marker",   label: "Marker",   key: "h" },
-        { id: "step",     icon: "step",     label: "Step",     key: "n" },
-        { id: "text",     icon: "text",     label: "Text",     key: "t" },
-        { id: "blur",     icon: "blur",     label: "Blur",     key: "b" },
-        { id: "pixelate", icon: "pixelate", label: "Pixelate", key: "x" },
-        { id: "zoom",     icon: "zoom",     label: "Zoom",     key: "z" }
-    ]
+    /** Tool descriptors (id/icon/label/key); supplied by shell.qml. */
+    property var tools: []
 
     property string hoverLabel: ""
     property string hoverKey: ""
@@ -134,7 +118,7 @@ Item {
                             width: 2.5
                             height: 2.5
                             radius: 1.25
-                            color: gripHover.hovered ? tb.idle : Theme.dimIcon
+                            color: gripHover.hovered ? tb.idle : Qt.rgba(0.77, 0.80, 0.85, 0.85)
                         }
                     }
                 }

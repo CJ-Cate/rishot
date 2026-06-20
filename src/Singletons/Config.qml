@@ -52,6 +52,7 @@ Singleton {
                 if (typeof c.blurRadius === "number") config.blurRadius = c.blurRadius;
                 if (typeof c.zoomFactor === "number") config.zoomFactor = c.zoomFactor;
             } catch (e) {
+                console.log("rishot: config parse failed, using defaults: " + e);
             }
         }
         onSaveFailed: (err) => console.log("rishot: config write failed: " + err)

@@ -19,7 +19,7 @@ Item {
     readonly property color vermilion: Theme.vermilion
     readonly property color idle: Theme.idle
 
-    readonly property bool isHyprland: Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") !== ""
+    readonly property bool isHyprland: !!Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE")
     readonly property string hyprDir: Quickshell.env("HOME") + "/.config/hypr"
 
     property string detectedFlavor: "conf"

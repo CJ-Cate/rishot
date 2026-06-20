@@ -3,6 +3,7 @@ import Qt5Compat.GraphicalEffects
 import Quickshell.Wayland
 import "Singletons"
 import "lib/coords.js" as Coords
+import "lib/hittest.js" as Hit
 
 Item {
     id: overlay
@@ -17,6 +18,7 @@ Item {
     property var model: null
     property var draft: null
     property int annRevision: 0
+    property int commitRevision: 0
     property bool textEditing: false
     property var selectedIndex: null
     property var moveOffset: null
@@ -48,32 +50,21 @@ Item {
             || selectedIndex < 0 || selectedIndex >= model.items.length) return null;
         var a = model.items[selectedIndex];
         var off = moveOffset || { x: 0, y: 0 };
-        var xs = a.points.map(function (p) { return p.x; });
-        var ys = a.points.map(function (p) { return p.y; });
-        var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
-        var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
-        var pad = Math.max((a.width || 4), 6);
-        if (a.type === "text") {
-            var size = a.size || 16;
-            x1 = x0 + Math.max((a.text ? a.text.length : 1) * size * 0.6, size);
-            y1 = y0 + size * 1.4;
-            pad = 4;
-        }
-        if (a.type === "step") {
-            var d = a.size || 32;
-            x0 -= d / 2; y0 -= d / 2;
-            x1 = x0 + d; y1 = y0 + d;
-            pad = 4;
-        }
+        var b = Hit.bboxOf(a);
+        var pad = (a.type === "text" || a.type === "step") ? 4 : Math.max((a.width || 4), 6);
         return {
-            x: x0 - sx + off.x - pad,
-            y: y0 - sy + off.y - pad,
-            w: (x1 - x0) + pad * 2,
-            h: (y1 - y0) + pad * 2
+            x: b.x - sx + off.x - pad,
+            y: b.y - sy + off.y - pad,
+            w: b.w + pad * 2,
+            h: b.h + pad * 2
         };
     }
 
-    readonly property var selBox: { annRevision; return selectionBox(); }
+    readonly property var selBox: {
+        if (overlay.selectedIndex === null) return null;
+        overlay.annRevision;
+        return selectionBox();
+    }
 
     Item {
         id: scene
@@ -91,17 +82,20 @@ Item {
 
         readonly property real mosaicFactor: Config.mosaicFactor
 
-        function itemsOfType(t) {
+        function committedOfType(t) {
             var src = overlay.model ? overlay.model.items : [];
             var out = [];
             for (var i = 0; i < src.length; i++)
                 if (src[i] && src[i].type === t) out.push(src[i]);
-            if (overlay.draft && overlay.draft.type === t) out.push(overlay.draft);
             return out;
         }
 
-        Repeater {
-            model: { overlay.annRevision; return scene.itemsOfType("blur"); }
+        function draftOfType(t) {
+            return (overlay.draft && overlay.draft.type === t) ? [overlay.draft] : [];
+        }
+
+        Component {
+            id: blurDelegate
 
             Item {
                 required property var modelData
@@ -137,7 +131,16 @@ Item {
         }
 
         Repeater {
-            model: { overlay.annRevision; return scene.itemsOfType("pixelate"); }
+            model: { overlay.commitRevision; return scene.committedOfType("blur"); }
+            delegate: blurDelegate
+        }
+        Repeater {
+            model: { overlay.annRevision; return scene.draftOfType("blur"); }
+            delegate: blurDelegate
+        }
+
+        Component {
+            id: pixelateDelegate
 
             Item {
                 required property var modelData
@@ -168,7 +171,16 @@ Item {
         }
 
         Repeater {
-            model: { overlay.annRevision; return scene.itemsOfType("zoom"); }
+            model: { overlay.commitRevision; return scene.committedOfType("pixelate"); }
+            delegate: pixelateDelegate
+        }
+        Repeater {
+            model: { overlay.annRevision; return scene.draftOfType("pixelate"); }
+            delegate: pixelateDelegate
+        }
+
+        Component {
+            id: zoomDelegate
 
             Item {
                 id: zoomCell
@@ -256,6 +268,15 @@ Item {
             }
         }
 
+        Repeater {
+            model: { overlay.commitRevision; return scene.committedOfType("zoom"); }
+            delegate: zoomDelegate
+        }
+        Repeater {
+            model: { overlay.annRevision; return scene.draftOfType("zoom"); }
+            delegate: zoomDelegate
+        }
+
         AnnLayer {
             id: annCanvas
             anchors.fill: parent
@@ -264,6 +285,7 @@ Item {
             model: overlay.model
             draft: overlay.draft
             revision: overlay.annRevision
+            commitRevision: overlay.commitRevision
             selectedIndex: overlay.selectedIndex
             moveOffset: overlay.moveOffset
         }
@@ -346,6 +368,14 @@ Item {
 
         Rectangle {
             anchors.fill: parent
+            anchors.margins: -1
+            color: "transparent"
+            border.color: Qt.rgba(0, 0, 0, 0.4)
+            border.width: 1
+        }
+
+        Rectangle {
+            anchors.fill: parent
             color: "transparent"
             border.color: overlay.vermilion
             border.width: 1.5
@@ -410,8 +440,8 @@ Item {
             ]
             Rectangle {
                 required property var modelData
-                width: 7; height: 7
-                radius: 1
+                width: 5; height: 5
+                radius: 2.5
                 color: overlay.vermilion
                 x: modelData.hx * (annSelection.width - width)
                 y: modelData.hy * (annSelection.height - height)
@@ -427,18 +457,20 @@ Item {
         height: overlay.localSel ? overlay.localSel.h : 0
 
         ShaderEffectSource {
+            id: exportSrc
             sourceItem: scene
             width: scene.width
             height: scene.height
             x: overlay.localSel ? -overlay.localSel.x : 0
             y: overlay.localSel ? -overlay.localSel.y : 0
-            live: true
+            live: false
             recursive: false
         }
     }
 
     function grabExport(path, cb) {
         if (!overlay.localSel) { cb(false); return; }
+        exportSrc.scheduleUpdate();
         var scheduled = exportClip.grabToImage(function (result) {
             var ok = false;
             try { ok = result ? result.saveToFile(path) : false; }
