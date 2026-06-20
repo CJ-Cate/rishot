@@ -87,9 +87,6 @@ ShellRoot {
     property var windowRects: []
     property bool dialogMode: false
     property string savedAuto: ""
-    property string toastText: ""
-    property bool toastError: false
-    property bool busy: false
 
     function textSize() { return activeWidth * 5 + 8; }
 
@@ -106,6 +103,12 @@ ShellRoot {
     readonly property string uploadEndpoint: Quickshell.env("RISHOT_UPLOAD")
         || "https://litterbox.catbox.moe/resources/internals/api.php"
     readonly property string keybindFile: Quickshell.env("RISHOT_KEYBIND_FILE") || ""
+
+    /** Absolute path to the bundled torii icon, passed to notify-send -i. */
+    readonly property string iconPath: {
+        var u = Qt.resolvedUrl("rishot.svg").toString();
+        return u.indexOf("file://") === 0 ? u.substring(7) : u;
+    }
 
     function beginSelection(gx, gy) {
         pressPoint = { x: gx, y: gy };
@@ -426,19 +429,27 @@ ShellRoot {
     }
 
     /**
-     * Shows a result toast, then quits once it has had a moment on screen. Every
-     * terminal action routes through here so a success and a failure both leave a
-     * visible trace instead of the overlay just vanishing.
+     * Fires a desktop notification and closes right away. Copy and save route
+     * through here so they leave a trace without holding the overlay (and its
+     * exclusive keyboard grab) open. notify-send is optional; the sh wrapper
+     * still exits 0 when it is missing, so the overlay always closes.
      */
     function finish(msg, isError) {
-        busy = false;
-        toastError = isError;
-        toastText = msg;
         dialogMode = false;
-        quitTimer.restart();
+        notifyProc.send(msg, isError);
     }
 
-    Timer { id: quitTimer; interval: 1200; onTriggered: Qt.quit() }
+    Process {
+        id: notifyProc
+        function send(msg, isError) {
+            command = ["sh", "-c",
+                "command -v notify-send >/dev/null 2>&1 && "
+                + "notify-send -a rishot -i \"$3\" -u \"$1\" rishot \"$2\"; exit 0",
+                "_", isError ? "critical" : "normal", msg, root.iconPath];
+            running = true;
+        }
+        onExited: () => Qt.quit()
+    }
 
     function doCopy() {
         var auto = defaultPath;
@@ -461,7 +472,7 @@ ShellRoot {
     function doUpload() {
         var tmp = root.tmpDir + "/rishot-upload.png";
         grabTo(tmp, function (ok) {
-            if (ok) { root.busy = true; uploadProc.run(tmp); }
+            if (ok) uploadProc.run(tmp);
             else root.finish("Capture failed", true);
         });
     }
@@ -478,7 +489,7 @@ ShellRoot {
             console.log("rishot: kdialog exit " + code + " path=" + JSON.stringify(chosen));
             if (code === 0 && chosen.length > 0) {
                 if (chosen !== root.savedAuto) copyFileProc.run(root.savedAuto, chosen);
-                else root.finish("Saved", false);
+                else root.finish("Screenshot saved", false);
             } else {
                 root.dialogMode = false;
             }
@@ -488,7 +499,7 @@ ShellRoot {
     Process {
         id: copyFileProc
         function run(src, dst) { command = ["cp", "--", src, dst]; running = true; }
-        onExited: () => root.finish("Saved", false)
+        onExited: () => root.finish("Screenshot saved", false)
     }
 
     Process {
@@ -503,36 +514,35 @@ ShellRoot {
                 "_", file];
             running = true;
         }
-        onExited: (code) => { console.log("rishot: wl-copy exit " + code); root.finish(code === 0 ? "Copied to clipboard" : "Copy failed", code !== 0); }
+        onExited: (code) => { console.log("rishot: wl-copy exit " + code); root.finish(code === 0 ? "Screenshot copied" : "Copy failed", code !== 0); }
     }
 
+    /**
+     * Uploads detached so the overlay closes instantly. setsid -f forks the
+     * worker into its own session and its parent returns at once (onExited quits
+     * qs); the worker strips metadata, posts, copies the link and fires the
+     * result notification on its own. exec 9>&- drops the single-instance lock fd
+     * so a fresh launch is not blocked while the upload runs.
+     */
     Process {
         id: uploadProc
-        stdout: StdioCollector { id: uploadOut }
         function run(file) {
-            command = ["sh", "-c",
-                "command -v magick >/dev/null 2>&1 && magick \"$1\" -strip \"$1\" >/dev/null 2>&1; "
-                + "out=$(curl -sf --proto '=https' --max-time 30 -A \"Mozilla/5.0\" "
+            command = ["setsid", "-f", "sh", "-c",
+                "exec 9>&-; "
+                + "command -v magick >/dev/null 2>&1 && magick \"$1\" -strip \"$1\" >/dev/null 2>&1; "
+                + "url=$(curl -sf --proto '=https' --max-time 30 -A \"Mozilla/5.0\" "
                 + "-F reqtype=fileupload -F time=72h -F fileToUpload=@\"$1\" \"$2\"); "
-                + "rm -f \"$1\"; printf %s \"$out\"",
-                "_", file, root.uploadEndpoint];
+                + "rm -f \"$1\"; "
+                + "if [ -n \"$url\" ] && [ \"${url#http}\" != \"$url\" ]; then "
+                + "printf %s \"$url\" | wl-copy; "
+                + "command -v notify-send >/dev/null 2>&1 && "
+                + "notify-send -a rishot -i \"$3\" -u normal rishot \"Link copied — $url\"; "
+                + "else command -v notify-send >/dev/null 2>&1 && "
+                + "notify-send -a rishot -i \"$3\" -u critical rishot 'Upload failed'; fi",
+                "_", file, root.uploadEndpoint, root.iconPath];
             running = true;
         }
-        onExited: (code) => {
-            var url = uploadOut.text.trim();
-            console.log("rishot: upload exit " + code + " url=" + JSON.stringify(url));
-            if (code === 0 && url.indexOf("http") === 0) urlCopyProc.run(url);
-            else root.finish("Upload failed", true);
-        }
-    }
-
-    Process {
-        id: urlCopyProc
-        function run(url) {
-            command = ["sh", "-c", "exec 9>&-; printf %s \"$1\" | wl-copy", "_", url];
-            running = true;
-        }
-        onExited: () => root.finish("Link copied to clipboard", false)
+        onExited: () => Qt.quit()
     }
 
     WindowProvider {
@@ -777,16 +787,6 @@ ShellRoot {
                     onPicked: (w) => { root.setToolWidth(w); root.openPopover = ""; }
                 }
 
-                Toast {
-                    visible: (root.toastText !== "" || root.busy) && root.anchorOverlay() === win
-                    text: root.busy ? "Uploading…" : root.toastText
-                    error: root.toastError
-                    busy: root.busy
-                    x: (win.width - width) / 2
-                    y: win.height - height - 48
-                    opacity: visible ? 1 : 0
-                    Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
-                }
             }
 
             Component.onCompleted: root.overlays.push(win)

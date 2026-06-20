@@ -86,7 +86,7 @@ Run `rishot` for region or window, `rishot monitor` for a whole output.
 
 Required: `quickshell` (the `qs` binary), Qt 6 (declarative, svg, 5compat, wayland), `wl-clipboard`.
 
-Optional: `imagemagick` (multi-monitor stitch), `cliphist` (clip history), `curl` (upload), `kdialog` (save dialog).
+Optional: `imagemagick` (multi-monitor stitch), `cliphist` (clip history), `curl` (upload), `kdialog` (save dialog), `libnotify` (a desktop notification when a shot is copied, saved or uploaded).
 
 </details>
 
