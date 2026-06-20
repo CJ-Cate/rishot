@@ -536,7 +536,7 @@ ShellRoot {
                 + "if [ -n \"$url\" ] && [ \"${url#http}\" != \"$url\" ]; then "
                 + "printf %s \"$url\" | wl-copy; "
                 + "command -v notify-send >/dev/null 2>&1 && "
-                + "notify-send -a rishot -i \"$3\" -u normal rishot \"Link copied — $url\"; "
+                + "notify-send -a rishot -i \"$3\" -u normal rishot \"Link copied: $url\"; "
                 + "else command -v notify-send >/dev/null 2>&1 && "
                 + "notify-send -a rishot -i \"$3\" -u critical rishot 'Upload failed'; fi",
                 "_", file, root.uploadEndpoint, root.iconPath];
