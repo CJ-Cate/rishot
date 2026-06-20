@@ -7,9 +7,9 @@
  * A smaller z means the window is visually closer to the top, matching the
  * caller's hit test which prefers the rect with the lowest z under the cursor.
  *
- * Full-screen, region and monitor selection are compositor-agnostic and do not
- * rely on these parsers; any parser may return [] to degrade gracefully without
- * affecting those paths.
+ * Region and monitor selection are compositor-agnostic and do not rely on these
+ * parsers; any parser may return [] to degrade gracefully without affecting
+ * those paths.
  */
 
 /**

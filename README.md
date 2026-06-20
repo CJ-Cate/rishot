@@ -95,7 +95,7 @@ Optional: `imagemagick` (multi-monitor stitch), `cliphist` (clip history), `curl
 - `RISHOT_CONFIG_DIR` — the Quickshell config dir (the one holding `shell.qml`)
 - `RISHOT_SAVEDIR` — the auto-save directory
 - `RISHOT_UPLOAD` — the upload endpoint (curl form-post target)
-- `RISHOT_KEYBIND_FILE` — a file rishot writes when you rebind from the settings panel
+- `RISHOT_KEYBIND_FILE` — file the rebind line is written into, taken as given (written verbatim, so point it at a dedicated include file)
 
 Rebinding from the settings panel on Hyprland writes a matching conf or lua line into its own include file, never your main config.
 
@@ -103,7 +103,7 @@ Rebinding from the settings panel on Hyprland writes a matching conf or lua line
 
 <details><summary>Upload</summary>
 
-Upload posts to `litterbox.catbox.moe` by default. The link it returns is unguessable but **public**, and it expires after 72 hours. Set `RISHOT_UPLOAD` to use your own host. For anything sensitive, copy or save instead.
+Upload posts to `litterbox.catbox.moe` by default. The link it returns is unguessable but **public**, and it expires after 72 hours. When `imagemagick` is present rishot strips image metadata before sending. Set `RISHOT_UPLOAD` to use your own host. For anything sensitive, copy or save instead.
 
 </details>
 

@@ -1,7 +1,7 @@
 # Maintainer: Gakuseei <erikschaefer07@icloud.com>
 
 pkgname=rishot-git
-pkgver=r8
+pkgver=r31.e3b6a87
 pkgrel=1
 pkgdesc="Wayland screenshot and annotation overlay built on Quickshell"
 arch=('any')

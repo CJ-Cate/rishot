@@ -111,7 +111,8 @@ install_deps() {
 		# quickshell is in official Fedora 44+/Rawhide; older Fedora needs the
 		# COPR errornointernet/quickshell, which a Qt version mismatch can break.
 		if ! sudo dnf install -y quickshell; then
-			warn "quickshell not in your repos; trying COPR errornointernet/quickshell"
+			warn "quickshell not in your repos; adding the third-party COPR errornointernet/quickshell"
+			say "  running: sudo dnf -y copr enable errornointernet/quickshell"
 			sudo dnf -y copr enable errornointernet/quickshell || \
 				warn "could not enable the quickshell COPR automatically"
 			sudo dnf install -y quickshell || {

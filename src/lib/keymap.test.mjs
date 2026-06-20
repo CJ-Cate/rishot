@@ -8,7 +8,7 @@ const K = {
     Print: 0x01000009, Escape: 0x01000000, Tab: 0x01000001, Return: 0x01000004,
     Space: 0x20, Delete: 0x01000007, Up: 0x01000013,
     F1: 0x01000030, F5: 0x01000034, F12: 0x0100003b,
-    A: 0x41, P: 0x50, Z: 0x5a, D0: 0x30, D7: 0x37,
+    A: 0x41, P: 0x50, S: 0x53, Z: 0x5a, D0: 0x30, D7: 0x37,
     Period: 0x2e, Slash: 0x2f, Minus: 0x2d,
     Shift: 0x01000020, Control: 0x01000022, Meta: 0x01000025
 };
@@ -44,7 +44,7 @@ eq(keyName(0x0fffffff, "/"), null, "unmapped key -> null (no raw-text fallback)"
 eq(bindString(K.Print, 0, ""), "Print", "plain Print -> 'Print'");
 eq(bindString(K.P, M.CTRL | M.SHIFT, "p"), "CTRL + SHIFT + P".replace("P", "p"),
     "Ctrl+Shift+p -> 'CTRL + SHIFT + p'");
-eq(bindString(K.S = 0x53, M.SHIFT | M.SUPER, "s"), "SUPER + SHIFT + s",
+eq(bindString(K.S, M.SHIFT | M.SUPER, "s"), "SUPER + SHIFT + s",
     "Super+Shift+s -> 'SUPER + SHIFT + s'");
 eq(bindString(K.A, M.SUPER, "a"), "SUPER + a", "Super+a -> 'SUPER + a'");
 eq(bindString(K.Shift, M.SHIFT, ""), null, "modifier-only chord -> null");
