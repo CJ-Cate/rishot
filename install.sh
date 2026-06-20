@@ -215,20 +215,26 @@ check_path() {
 }
 
 # Print the keybind line for the detected compositor. We do not edit configs.
+# When BINDIR is not on PATH the bind uses the full launcher path so the key
+# still works without a PATH change (the usual reason a fresh bind does nothing).
 print_keybind() {
+	case ":${PATH}:" in
+	*":${BINDIR}:"*) cmd="rishot" ;;
+	*) cmd="$BINDIR/rishot" ;;
+	esac
 	say ""
-	say "Bind rishot to a key in your compositor config (it has no global hotkey):"
+	say "Bind it to a key in your compositor config (it has no global hotkey):"
 	if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-		say "  Hyprland (conf):  bind = , Print, exec, rishot"
-		say "  Hyprland (lua):   hl.bind(\"Print\", hl.dsp.exec_cmd(\"rishot\"))"
+		say "  Hyprland (conf):  bind = , Print, exec, $cmd"
+		say "  Hyprland (lua):   hl.bind(\"Print\", hl.dsp.exec_cmd(\"$cmd\"))"
 	elif [ -n "${SWAYSOCK:-}" ]; then
-		say "  Sway:             bindsym Print exec rishot"
+		say "  Sway:             bindsym Print exec $cmd"
 	elif [ -n "${NIRI_SOCKET:-}" ]; then
-		say "  Niri:             bind it to 'rishot' in your niri keybinds"
+		say "  Niri:             bind it to '$cmd' in your niri keybinds"
 	else
-		say "  Hyprland (conf):  bind = , Print, exec, rishot"
-		say "  Hyprland (lua):   hl.bind(\"Print\", hl.dsp.exec_cmd(\"rishot\"))"
-		say "  Sway:             bindsym Print exec rishot"
+		say "  Hyprland (conf):  bind = , Print, exec, $cmd"
+		say "  Hyprland (lua):   hl.bind(\"Print\", hl.dsp.exec_cmd(\"$cmd\"))"
+		say "  Sway:             bindsym Print exec $cmd"
 	fi
 }
 
