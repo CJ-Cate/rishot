@@ -428,24 +428,36 @@ ShellRoot {
         stitchProc.runWith(args, after);
     }
 
+    /** Maps an absolute path under $HOME to a ~-prefixed display string. */
+    function pretty(p) {
+        return (root.homeDir.length > 0 && p.indexOf(root.homeDir) === 0)
+            ? "~" + p.slice(root.homeDir.length) : p;
+    }
+
     /**
      * Fires a desktop notification and closes right away. Copy and save route
      * through here so they leave a trace without holding the overlay (and its
-     * exclusive keyboard grab) open. notify-send is optional; the sh wrapper
-     * still exits 0 when it is missing, so the overlay always closes.
+     * exclusive keyboard grab) open. When openPath is set the toast carries an
+     * Open action; the worker is detached so qs quits at once while the
+     * notification outlives it to catch the click and xdg-open the file (the
+     * action signal would reach a dead app otherwise). notify-send is optional;
+     * the sh wrapper still exits 0 when it is missing.
      */
-    function finish(msg, isError) {
+    function finish(summary, body, isError, openPath) {
         dialogMode = false;
-        notifyProc.send(msg, isError);
+        notifyProc.send(summary, body || "", isError === true, openPath || "");
     }
 
     Process {
         id: notifyProc
-        function send(msg, isError) {
-            command = ["sh", "-c",
-                "command -v notify-send >/dev/null 2>&1 && "
-                + "notify-send -a rishot -i \"$3\" -u \"$1\" rishot \"$2\"; exit 0",
-                "_", isError ? "critical" : "normal", msg, root.iconPath];
+        function send(summary, body, isError, openPath) {
+            command = ["setsid", "-f", "sh", "-c",
+                "exec 9>&-; command -v notify-send >/dev/null 2>&1 || exit 0; "
+                + "if [ -n \"$5\" ]; then "
+                + "act=$(notify-send -a rishot -i \"$1\" -u \"$2\" -A \"open=Open\" \"$3\" \"$4\"); "
+                + "[ \"$act\" = open ] && xdg-open \"$5\"; "
+                + "else notify-send -a rishot -i \"$1\" -u \"$2\" \"$3\" \"$4\"; fi",
+                "_", root.iconPath, isError ? "critical" : "normal", summary, body, openPath];
             running = true;
         }
         onExited: () => Qt.quit()
@@ -455,14 +467,14 @@ ShellRoot {
         var auto = defaultPath;
         grabTo(auto, function (ok) {
             if (ok) copyProc.run(auto);
-            else root.finish("Capture failed", true);
+            else root.finish("Capture failed", "", true, "");
         });
     }
 
     function doSave() {
         var auto = root.defaultPath;
         grabTo(auto, function (ok) {
-            if (!ok) { root.finish("Capture failed", true); return; }
+            if (!ok) { root.finish("Capture failed", "", true, ""); return; }
             root.savedAuto = auto;
             root.dialogMode = true;
             saveDialog.open();
@@ -473,7 +485,7 @@ ShellRoot {
         var tmp = root.tmpDir + "/rishot-upload.png";
         grabTo(tmp, function (ok) {
             if (ok) uploadProc.run(tmp);
-            else root.finish("Capture failed", true);
+            else root.finish("Capture failed", "", true, "");
         });
     }
 
@@ -489,7 +501,7 @@ ShellRoot {
             console.log("rishot: kdialog exit " + code + " path=" + JSON.stringify(chosen));
             if (code === 0 && chosen.length > 0) {
                 if (chosen !== root.savedAuto) copyFileProc.run(root.savedAuto, chosen);
-                else root.finish("Screenshot saved", false);
+                else root.finish("Screenshot saved", root.pretty(root.savedAuto), false, root.savedAuto);
             } else {
                 root.dialogMode = false;
             }
@@ -498,23 +510,30 @@ ShellRoot {
 
     Process {
         id: copyFileProc
-        function run(src, dst) { command = ["cp", "--", src, dst]; running = true; }
-        onExited: () => root.finish("Screenshot saved", false)
+        property string dst: ""
+        function run(src, d) { dst = d; command = ["cp", "--", src, d]; running = true; }
+        onExited: () => root.finish("Screenshot saved", root.pretty(dst), false, dst)
     }
 
     Process {
         id: copyProc
-        function run(file) {
+        property string file: ""
+        function run(f) {
+            file = f;
             command = ["sh", "-c",
                 "exec 9>&-; wl-copy --type image/png < \"$1\"; "
                 + "command -v cliphist >/dev/null 2>&1 || exit 0; "
                 + "if [ \"$(stat -c%s \"$1\")\" -ge 4900000 ]; then "
                 + "command -v magick >/dev/null 2>&1 && magick \"$1\" -quality 92 jpeg:- | cliphist store; "
                 + "else cliphist store < \"$1\"; fi",
-                "_", file];
+                "_", f];
             running = true;
         }
-        onExited: (code) => { console.log("rishot: wl-copy exit " + code); root.finish(code === 0 ? "Screenshot copied" : "Copy failed", code !== 0); }
+        onExited: (code) => {
+            console.log("rishot: wl-copy exit " + code);
+            if (code === 0) root.finish("Screenshot copied", root.pretty(file), false, file);
+            else root.finish("Copy failed", "", true, "");
+        }
     }
 
     /**
@@ -535,8 +554,9 @@ ShellRoot {
                 + "rm -f \"$1\"; "
                 + "if [ -n \"$url\" ] && [ \"${url#http}\" != \"$url\" ]; then "
                 + "printf %s \"$url\" | wl-copy; "
-                + "command -v notify-send >/dev/null 2>&1 && "
-                + "notify-send -a rishot -i \"$3\" -u normal rishot \"Link copied: $url\"; "
+                + "command -v notify-send >/dev/null 2>&1 || exit 0; "
+                + "act=$(notify-send -a rishot -i \"$3\" -u normal -A \"copy=Copy link\" 'Link copied' \"$url\"); "
+                + "[ \"$act\" = copy ] && printf %s \"$url\" | wl-copy; "
                 + "else command -v notify-send >/dev/null 2>&1 && "
                 + "notify-send -a rishot -i \"$3\" -u critical rishot 'Upload failed'; fi",
                 "_", file, root.uploadEndpoint, root.iconPath];
