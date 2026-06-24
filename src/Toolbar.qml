@@ -25,7 +25,6 @@ Item {
     signal redoRequested()
     signal copyRequested()
     signal saveRequested()
-    signal uploadRequested()
     signal settingsRequested()
 
     /**
@@ -285,17 +284,6 @@ Item {
                         : tb.hideTip("Save")
                 }
             }
-            IconButton {
-                id: uploadBtn
-                icon: "upload"
-                onClicked: tb.uploadRequested()
-                HoverHandler {
-                    onHoveredChanged: hovered
-                        ? tb.showTip("Upload · public", "Ctrl+U", uploadBtn.x + row.x + uploadBtn.width / 2)
-                        : tb.hideTip("Upload · public")
-                }
-            }
-
             Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 20; color: tb.sep; Layout.leftMargin: 3; Layout.rightMargin: 3 }
 
             IconButton {

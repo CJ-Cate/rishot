@@ -21,7 +21,6 @@ options:
 
 env:
   RISHOT_CONFIG_DIR  override the Quickshell config dir (must hold shell.qml)
-  RISHOT_UPLOAD      override the upload endpoint (https form-post target)
   RISHOT_SAVEDIR     override the auto-save directory
   RISHOT_KEYBIND_FILE  write the in-app rebind here instead of autodetecting
 EOF

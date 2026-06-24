@@ -100,8 +100,6 @@ ShellRoot {
         || (Quickshell.env("XDG_PICTURES_DIR")
             ? Quickshell.env("XDG_PICTURES_DIR") + "/Screenshots"
             : homeDir + "/Pictures/Screenshots")
-    readonly property string uploadEndpoint: Quickshell.env("RISHOT_UPLOAD")
-        || "https://litterbox.catbox.moe/resources/internals/api.php"
     readonly property string keybindFile: Quickshell.env("RISHOT_KEYBIND_FILE") || ""
 
     /** Absolute path to the bundled torii icon, passed to notify-send -i. */
@@ -488,14 +486,6 @@ ShellRoot {
         });
     }
 
-    function doUpload() {
-        var tmp = root.tmpDir + "/rishot-upload.png";
-        grabTo(tmp, function (ok) {
-            if (ok) uploadProc.run(tmp);
-            else root.finish("Capture failed", "", true, "");
-        });
-    }
-
     Process {
         id: saveDialog
         stdout: StdioCollector { id: saveOut }
@@ -545,35 +535,6 @@ ShellRoot {
             if (keep) root.finish("Screenshot copied", root.pretty(file), false, file);
             else root.finish("Copied to clipboard", "", false, "");
         }
-    }
-
-    /**
-     * Uploads detached so the overlay closes instantly. setsid -f forks the
-     * worker into its own session and its parent returns at once (onExited quits
-     * qs); the worker strips metadata, posts, copies the link and fires the
-     * result notification on its own. exec 9>&- drops the single-instance lock fd
-     * so a fresh launch is not blocked while the upload runs.
-     */
-    Process {
-        id: uploadProc
-        function run(file) {
-            command = ["setsid", "-f", "sh", "-c",
-                "exec 9>&-; "
-                + "command -v magick >/dev/null 2>&1 && magick \"$1\" -strip \"$1\" >/dev/null 2>&1; "
-                + "url=$(curl -sf --proto '=https' --max-time 30 -A \"Mozilla/5.0\" "
-                + "-F reqtype=fileupload -F time=72h -F fileToUpload=@\"$1\" \"$2\"); "
-                + "rm -f \"$1\"; "
-                + "if [ -n \"$url\" ] && [ \"${url#http}\" != \"$url\" ]; then "
-                + "printf %s \"$url\" | wl-copy; "
-                + "command -v notify-send >/dev/null 2>&1 || exit 0; "
-                + "act=$(notify-send -a rishot -i \"$3\" -u normal -A \"copy=Copy link\" 'Link copied' \"$url\"); "
-                + "[ \"$act\" = copy ] && printf %s \"$url\" | wl-copy; "
-                + "else command -v notify-send >/dev/null 2>&1 && "
-                + "notify-send -a rishot -i \"$3\" -u critical rishot 'Upload failed'; fi",
-                "_", file, root.uploadEndpoint, root.iconPath];
-            running = true;
-        }
-        onExited: () => Qt.quit()
     }
 
     WindowProvider {
@@ -670,7 +631,6 @@ ShellRoot {
                     if (e.modifiers & Qt.ControlModifier) {
                         if (e.key === Qt.Key_C) { root.doCopy(); e.accepted = true; }
                         else if (e.key === Qt.Key_S) { if (root.phase === "editing") root.doSave(); e.accepted = true; }
-                        else if (e.key === Qt.Key_U) { if (root.phase === "editing") root.doUpload(); e.accepted = true; }
                         else if (e.key === Qt.Key_Z) { root.undo(); e.accepted = true; }
                         else if (e.key === Qt.Key_Y) { root.redo(); e.accepted = true; }
                         return;
@@ -765,7 +725,6 @@ ShellRoot {
                     onRedoRequested: root.redo()
                     onCopyRequested: root.doCopy()
                     onSaveRequested: root.doSave()
-                    onUploadRequested: root.doUpload()
                     onSettingsRequested: { root.openPopover = ""; root.settingsOpen = !root.settingsOpen; }
                     onDragMoved: (dx, dy) => {
                         if (!win.selLocal) return;

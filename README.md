@@ -18,7 +18,7 @@
 
 </div>
 
-Drag a region, click a window, or grab a whole monitor. Mark it up, then copy, save, or upload. rishot started as the screenshot surface in my Hyprland rice, [Ricelin](https://github.com/Gakuseei/Ricelin), and now stands on its own.
+Drag a region, click a window, or grab a whole monitor. Mark it up, then copy or save. rishot started as the screenshot surface in my Hyprland rice, [Ricelin](https://github.com/Gakuseei/Ricelin), and now stands on its own.
 
 ## Install
 
@@ -56,7 +56,7 @@ Quickshell is in the official repos on Arch (extra), Fedora 44+, Void, and Debia
 - Resize the selection after the fact with eight handles
 - Twelve tools: rectangle, ellipse, line, arrow, pen, highlighter, text, numbered steps, blur, pixelate, zoom
 - Per-tool memory: every tool keeps its own colour and width
-- Undo and redo, copy, save, upload
+- Undo and redo, copy, save
 - Settings panel: pixelate coarseness, blur strength, zoom factor, key rebind
 
 ## Compositors
@@ -86,7 +86,7 @@ Run `rishot` for region or window, `rishot monitor` for a whole output.
 
 Required: `quickshell` (the `qs` binary), Qt 6 (declarative, svg, 5compat, wayland), `wl-clipboard`.
 
-Optional: `imagemagick` (multi-monitor stitch), `cliphist` (clip history), `curl` (upload), `kdialog` (save dialog), `libnotify` (a desktop notification when a shot is copied, saved or uploaded).
+Optional: `imagemagick` (multi-monitor stitch), `cliphist` (clip history), `kdialog` (save dialog), `libnotify` (a desktop notification when a shot is copied or saved).
 
 </details>
 
@@ -94,16 +94,9 @@ Optional: `imagemagick` (multi-monitor stitch), `cliphist` (clip history), `curl
 
 - `RISHOT_CONFIG_DIR`: the Quickshell config dir (the one holding `shell.qml`)
 - `RISHOT_SAVEDIR`: the auto-save directory
-- `RISHOT_UPLOAD`: the upload endpoint (curl form-post target)
 - `RISHOT_KEYBIND_FILE`: file the rebind line is written into, taken as given (written verbatim, so point it at a dedicated include file)
 
 Rebinding from the settings panel on Hyprland writes a matching conf or lua line into its own include file, never your main config.
-
-</details>
-
-<details><summary>Upload</summary>
-
-Upload posts to `litterbox.catbox.moe` by default. The link it returns is unguessable but **public**, and it expires after 72 hours. When `imagemagick` is present rishot strips image metadata before sending. Set `RISHOT_UPLOAD` to use your own host. For anything sensitive, copy or save instead.
 
 </details>
 

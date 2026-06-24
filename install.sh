@@ -38,7 +38,7 @@ detect_pm() {
 print_manual_deps() {
 	say "Install these yourself, then re-run:"
 	say "  required: quickshell, wl-clipboard, qt6-declarative, qt6-svg, qt6-5compat, qt6-wayland"
-	say "  optional: imagemagick, cliphist, curl, kdialog, libnotify"
+	say "  optional: imagemagick, cliphist, kdialog, libnotify"
 	say "quickshell lives in: Arch extra, Debian/Ubuntu, Fedora COPR errornointernet/quickshell, NixOS, Void."
 }
 
@@ -58,12 +58,12 @@ opt_install() {
 	esac || warn "optional dep '$pkg' unavailable in your repos, skipping (one rishot feature stays off)"
 }
 
-# Install the optional feature deps (save dialog, clip history, upload, stitch),
+# Install the optional feature deps (save dialog, clip history, stitch),
 # each best-effort so a missing one never blocks the rest.
 install_optionals() {
 	pm="$1"
 	shift
-	say "Installing optional deps (save dialog, clip history, upload, multi-monitor stitch)…"
+	say "Installing optional deps (save dialog, clip history, multi-monitor stitch)…"
 	for pkg in "$@"; do opt_install "$pm" "$pkg"; done
 }
 
@@ -77,7 +77,7 @@ install_deps() {
 		say "Installing deps via $pm (quickshell from extra or AUR)…"
 		"$pm" -S --needed --noconfirm quickshell wl-clipboard \
 			qt6-declarative qt6-svg qt6-5compat qt6-wayland || return 1
-		install_optionals "$pm" imagemagick cliphist curl kdialog libnotify
+		install_optionals "$pm" imagemagick cliphist kdialog libnotify
 		;;
 	pacman)
 		say "Installing deps via pacman…"
@@ -90,7 +90,7 @@ install_deps() {
 				return 1
 			}
 		fi
-		install_optionals pacman imagemagick cliphist curl kdialog libnotify
+		install_optionals pacman imagemagick cliphist kdialog libnotify
 		;;
 	apt)
 		say "Installing deps via apt…"
@@ -101,7 +101,7 @@ install_deps() {
 		sudo apt-get update || true
 		sudo apt-get install -y quickshell wl-clipboard \
 			libqt6svg6 qt6-wayland || return 1
-		install_optionals apt imagemagick cliphist curl kdialog libnotify-bin
+		install_optionals apt imagemagick cliphist kdialog libnotify-bin
 		;;
 	dnf)
 		say "Installing deps via dnf…"
@@ -129,7 +129,7 @@ install_deps() {
 				return 1
 			fi
 		fi
-		install_optionals dnf ImageMagick cliphist curl kdialog libnotify
+		install_optionals dnf ImageMagick cliphist kdialog libnotify
 		;;
 	zypper)
 		say "Installing deps via zypper…"
@@ -141,14 +141,14 @@ install_deps() {
 			warn "(e.g. home:AvengeMedia:danklinux), then install 'quickshell'"
 			return 1
 		}
-		install_optionals zypper ImageMagick cliphist curl kdialog libnotify-tools
+		install_optionals zypper ImageMagick cliphist kdialog libnotify-tools
 		;;
 	xbps)
 		say "Installing deps via xbps…"
 		# Void names the 5compat module qt6-qt5compat (not qt6-5compat).
 		sudo xbps-install -Sy quickshell wl-clipboard \
 			qt6-declarative qt6-svg qt6-qt5compat qt6-wayland || return 1
-		install_optionals xbps ImageMagick cliphist curl kdialog libnotify
+		install_optionals xbps ImageMagick cliphist kdialog libnotify
 		;;
 	nix)
 		warn "Nix detected. This installer will not mutate a Nix system."
