@@ -1,3 +1,5 @@
+# This is a fork that removes the upload feature entirely, and otherwise pulls from upstream.
+
 <div align="center">
 
 <img src="assets/torii.svg" width="84" alt="rishot">
